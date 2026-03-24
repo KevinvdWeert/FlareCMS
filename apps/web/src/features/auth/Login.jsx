@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { loginFirebase } from '../../lib/auth';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
-import { useAuth } from './AuthContext';
+import { useAuth } from './useAuth';
 import { validateEmail } from '../../lib/validation';
 
 export const Login = () => {
@@ -31,17 +31,19 @@ export const Login = () => {
   };
 
   return (
-    <div className="login-container" style={{ maxWidth: '400px', margin: '100px auto', fontFamily: 'sans-serif' }}>
+    <div className="auth-shell">
+      <div className="auth-card">
       <h2>Admin Login</h2>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <p className="auth-subtitle">Welcome back. Sign in to manage content.</p>
+      {error && <p className="auth-error">{error}</p>}
+      <form onSubmit={handleLogin} className="auth-form">
         <input 
           type="email" 
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email" 
           required 
-          style={{ padding: '8px' }}
+          className="auth-input"
         />
         <input 
           type="password" 
@@ -49,18 +51,19 @@ export const Login = () => {
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Password" 
           required 
-          style={{ padding: '8px' }}
+          className="auth-input"
         />
-        <button type="submit" style={{ padding: '10px', cursor: 'pointer', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px' }}>
+        <button type="submit" className="auth-submit">
           Login
         </button>
       </form>
-      <p style={{ fontSize: '14px', color: '#64748b', marginTop: '8px' }}>
+      <p className="auth-note">
         For security, login is temporarily locked after repeated failures.
       </p>
-      <p style={{ marginTop: '12px', color: '#64748b' }}>
+      <p className="auth-links">
         <Link to="/password-reset">Forgot password?</Link> · <Link to="/signup">Create account</Link>
       </p>
+      </div>
     </div>
   );
 };

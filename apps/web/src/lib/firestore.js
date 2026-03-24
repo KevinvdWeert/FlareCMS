@@ -1,12 +1,13 @@
-import { 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  setDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  query,
   where,
   orderBy,
   limit,
@@ -20,6 +21,17 @@ export const getUserProfile = async (uid) => {
   const userRef = doc(db, 'users', uid);
   const snap = await getDoc(userRef);
   return snap.exists() ? snap.data() : null;
+};
+
+export const observeUserProfile = (uid, onData, onError) => {
+  const userRef = doc(db, 'users', uid);
+  return onSnapshot(
+    userRef,
+    (snap) => {
+      onData(snap.exists() ? snap.data() : null);
+    },
+    onError
+  );
 };
 
 export const fetchUsers = async () => {
@@ -37,7 +49,7 @@ export const updateUserRole = async (uid, role) => {
 export const getPages = async (onlyPublished = false) => {
   const pagesRef = collection(db, 'pages');
   let q = pagesRef;
-  
+
   if (onlyPublished) {
     q = query(pagesRef, where('status', '==', 'published'));
   } else {

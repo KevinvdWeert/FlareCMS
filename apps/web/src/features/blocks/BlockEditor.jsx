@@ -1,6 +1,6 @@
 import React from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { uploadBlockImage, getImageUrl } from '../../lib/storage';
+import { uploadBlockImage } from '../../lib/storage';
 import { Type, Image as ImageIcon, Heading1, Trash, ArrowUp, ArrowDown } from 'lucide-react';
 
 export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
@@ -63,36 +63,36 @@ export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
   };
 
   return (
-    <div>
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-        <button onClick={() => addBlock('heading')} style={toolbarBtnStyle}>
+    <div className="block-editor">
+      <div className="block-toolbar">
+        <button onClick={() => addBlock('heading')} className="block-toolbar-btn" type="button">
           <Heading1 size={16} /> Add Heading
         </button>
-        <button onClick={() => addBlock('paragraph')} style={toolbarBtnStyle}>
+        <button onClick={() => addBlock('paragraph')} className="block-toolbar-btn" type="button">
           <Type size={16} /> Add Paragraph
         </button>
-        <button onClick={() => addBlock('image')} style={toolbarBtnStyle}>
+        <button onClick={() => addBlock('image')} className="block-toolbar-btn" type="button">
           <ImageIcon size={16} /> Add Image
         </button>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+      <div className="block-list">
         {blocks.map((block, index) => (
-          <div key={block.id} style={{ border: '1px solid #e2e8f0', borderRadius: '4px', padding: '15px', background: '#f8fafc', position: 'relative' }}>
+          <div key={block.id} className="block-item">
             
-            <div style={{ position: 'absolute', right: '10px', top: '10px', display: 'flex', gap: '5px' }}>
-              <button disabled={index === 0} onClick={() => moveBlock(index, -1)} style={iconBtnStyle}><ArrowUp size={14} /></button>
-              <button disabled={index === blocks.length - 1} onClick={() => moveBlock(index, 1)} style={iconBtnStyle}><ArrowDown size={14} /></button>
-              <button onClick={() => removeBlock(index)} style={{ ...iconBtnStyle, color: '#ef4444' }}><Trash size={14} /></button>
+            <div className="block-item-actions">
+              <button disabled={index === 0} onClick={() => moveBlock(index, -1)} className="block-icon-btn" type="button"><ArrowUp size={14} /></button>
+              <button disabled={index === blocks.length - 1} onClick={() => moveBlock(index, 1)} className="block-icon-btn" type="button"><ArrowDown size={14} /></button>
+              <button onClick={() => removeBlock(index)} className="block-icon-btn danger" type="button"><Trash size={14} /></button>
             </div>
 
-            <div style={{ fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', color: '#64748b', marginBottom: '10px' }}>
+            <div className="block-type-label">
               {block.type}
             </div>
 
             {block.type === 'heading' && (
-              <div style={innerFormStyle}>
-                <select value={block.level} onChange={(e) => updateBlock(index, 'level', parseInt(e.target.value))} style={inputStyle}>
+              <div className="block-form-row">
+                <select value={block.level} onChange={(e) => updateBlock(index, 'level', parseInt(e.target.value))} className="block-input">
                   <option value={1}>H1</option>
                   <option value={2}>H2</option>
                   <option value={3}>H3</option>
@@ -102,26 +102,26 @@ export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
                   value={block.text} 
                   onChange={(e) => updateBlock(index, 'text', e.target.value)} 
                   placeholder="Heading text..." 
-                  style={{ ...inputStyle, width: '100%' }}
+                  className="block-input block-input-grow"
                 />
               </div>
             )}
 
             {block.type === 'paragraph' && (
-              <div style={innerFormStyle}>
+              <div className="block-form-row">
                 <textarea 
                   value={block.text} 
                   onChange={(e) => updateBlock(index, 'text', e.target.value)} 
                   placeholder="Paragraph text..." 
-                  style={{ ...inputStyle, width: '100%', minHeight: '80px', resize: 'vertical' }}
+                  className="block-input block-input-grow block-textarea"
                 />
               </div>
             )}
 
             {block.type === 'image' && (
-              <div style={{ ...innerFormStyle, flexDirection: 'column' }}>
+              <div className="block-form-column">
                 {block.storagePath ? (
-                  <div style={{ background: '#e2e8f0', padding: '10px', fontSize: '12px', borderRadius: '4px' }}>
+                  <div className="block-image-meta">
                     Image Path: {block.storagePath} <br/>
                     Alt: {block.alt}
                   </div>
@@ -133,7 +133,7 @@ export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
                   value={block.caption || ''} 
                   onChange={(e) => updateBlock(index, 'caption', e.target.value)} 
                   placeholder="Optional caption..." 
-                  style={{ ...inputStyle, width: '100%', marginTop: '10px' }}
+                  className="block-input block-input-grow"
                 />
               </div>
             )}
@@ -141,48 +141,11 @@ export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
           </div>
         ))}
         {blocks.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', border: '1px dashed #cbd5e1', borderRadius: '4px' }}>
+          <div className="block-empty-state">
             No blocks added yet. Use the buttons above to add content.
           </div>
         )}
       </div>
     </div>
   );
-};
-
-const toolbarBtnStyle = {
-  background: 'white',
-  border: '1px solid #cbd5e1',
-  padding: '6px 12px',
-  borderRadius: '4px',
-  cursor: 'pointer',
-  display: 'flex',
-  alignItems: 'center',
-  gap: '5px',
-  fontSize: '14px',
-  color: '#475569'
-};
-
-const iconBtnStyle = {
-  background: 'white',
-  border: '1px solid #cbd5e1',
-  padding: '4px',
-  borderRadius: '4px',
-  cursor: 'pointer',
-  color: '#475569',
-  display: 'flex',
-  alignItems: 'center'
-};
-
-const innerFormStyle = {
-  display: 'flex',
-  gap: '10px',
-  alignItems: 'flex-start'
-};
-
-const inputStyle = {
-  padding: '8px',
-  border: '1px solid #cbd5e1',
-  borderRadius: '4px',
-  fontFamily: 'inherit'
 };

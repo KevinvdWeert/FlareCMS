@@ -9,21 +9,36 @@ export const PublicPage = () => {
   const [page, setPage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [heroUrl, setHeroUrl] = useState(null);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     const fetchPageContent = async () => {
       setLoading(true);
-      const data = await getPageBySlug(slug);
-      setPage(data);
-      if (data?.featuredImage?.storagePath) {
-        try {
-          const url = await getImageUrl(data.featuredImage.storagePath);
-          setHeroUrl(url);
-        } catch (e) {
-          console.error("Failed to load featured image", e);
+      setLoadError('');
+      setHeroUrl(null);
+      try {
+        const data = await Promise.race([
+          getPageBySlug(slug),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Request timed out while loading page.')), 5000)
+          )
+        ]);
+        setPage(data);
+        if (data?.featuredImage?.storagePath) {
+          try {
+            const url = await getImageUrl(data.featuredImage.storagePath);
+            setHeroUrl(url);
+          } catch (e) {
+            console.error('Failed to load featured image', e);
+          }
         }
+      } catch (error) {
+        console.error('Failed to load page:', error);
+        setPage(null);
+        setLoadError('This page is taking too long to load.');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     fetchPageContent();
   }, [slug]);
@@ -41,7 +56,7 @@ export const PublicPage = () => {
       <div className="site-layout">
         <main className="not-found">
           <h1>404</h1>
-          <p>Page "{slug}" not found.</p>
+          <p>{loadError || `Page "${slug}" not found.`}</p>
           <Link to="/" className="btn-primary">Go Home</Link>
         </main>
       </div>

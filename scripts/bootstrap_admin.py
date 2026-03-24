@@ -60,6 +60,10 @@ def bootstrap_admin(identifier, email=None):
             data['createdAt'] = firestore.SERVER_TIMESTAMP
 
         user_ref.set(data, merge=True)
+
+        # Also set Auth custom claims so the frontend can resolve role from ID token
+        # even if Firestore profile reads are temporarily denied.
+        auth.set_custom_user_claims(uid, {'role': 'admin'})
     except PermissionDenied as exc:
         print("Error: Firestore access denied.")
         print("Enable Cloud Firestore API and create a Firestore database in your Firebase project, then retry.")
@@ -70,7 +74,7 @@ def bootstrap_admin(identifier, email=None):
         print(f"Error: Failed while writing admin role in Firestore: {exc}")
         sys.exit(1)
 
-    print(f"Successfully bootstrapped user {uid} as an admin in Firestore.")
+    print(f"Successfully bootstrapped user {uid} as an admin in Firestore and Auth custom claims.")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

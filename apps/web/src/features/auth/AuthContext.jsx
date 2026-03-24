@@ -1,59 +1,118 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { observeAuthState } from '../../lib/auth';
-import { getUserProfile } from '../../lib/firestore';
-
-const AuthContext = createContext();
-const PROFILE_CACHE_PREFIX = 'flarecms-profile:';
-// Cache profile locally for 1 hour to reduce repeated Firestore reads.
-const PROFILE_CACHE_TTL_MS = 60 * 60 * 1000;
+import { getUserProfile, observeUserProfile } from '../../lib/firestore';
+import { AuthContext } from './auth-context';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [profileError, setProfileError] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = observeAuthState(async (firebaseUser) => {
+    let unsubscribeProfile = null;
+    let authInitTimeout = null;
+
+    // Prevent global app lock if Firebase auth initialization stalls.
+    authInitTimeout = setTimeout(() => {
+      setLoading(false);
+    }, 5000);
+
+    const unsubscribeAuth = observeAuthState((firebaseUser) => {
+      if (authInitTimeout) {
+        clearTimeout(authInitTimeout);
+        authInitTimeout = null;
+      }
+
       setUser(firebaseUser);
+
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+        unsubscribeProfile = null;
+      }
+
       if (firebaseUser) {
-        try {
-          const cacheKey = `${PROFILE_CACHE_PREFIX}${firebaseUser.uid}`;
-          const cached = typeof window !== 'undefined' ? localStorage.getItem(cacheKey) : null;
-          let userDoc = null;
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            if (Date.now() - parsed.cachedAt < PROFILE_CACHE_TTL_MS) {
-              userDoc = parsed.profile;
+        setLoading(true);
+        setProfileError('');
+
+        // Load profile once quickly, then subscribe for background updates.
+        (async () => {
+          let claimRole = null;
+          try {
+            const tokenResult = await firebaseUser.getIdTokenResult(true);
+            claimRole = tokenResult?.claims?.role || null;
+            if (claimRole === 'admin' || claimRole === 'editor') {
+              setProfile((prev) => ({ ...(prev || {}), role: claimRole }));
+              setProfileError('');
+              setLoading(false);
+            }
+          } catch (error) {
+            console.warn('Unable to resolve role claim from ID token:', error);
+          }
+
+          try {
+            const userDoc = await Promise.race([
+              getUserProfile(firebaseUser.uid),
+              new Promise((resolve) => setTimeout(() => resolve(null), 3000))
+            ]);
+            if (userDoc) {
+              setProfile(userDoc);
             } else {
-              localStorage.removeItem(cacheKey);
+              setProfile((prev) => prev || { role: 'user' });
             }
-          }
-          if (!userDoc) {
-            userDoc = await getUserProfile(firebaseUser.uid);
-            if (typeof window !== 'undefined' && userDoc) {
-              localStorage.setItem(cacheKey, JSON.stringify({ profile: userDoc, cachedAt: Date.now() }));
+            setProfileError('');
+          } catch (error) {
+            console.error('Error fetching user profile:', error);
+            if (claimRole === 'admin' || claimRole === 'editor') {
+              setProfile((prev) => ({ ...(prev || {}), role: claimRole }));
+              setProfileError('');
+            } else {
+              setProfile((prev) => prev || { role: 'user' });
+              setProfileError(error?.message || 'Unable to load user profile from Firestore.');
             }
+          } finally {
+            setLoading(false);
           }
-          setProfile(userDoc || { role: 'user' });
+        })();
+
+        try {
+          unsubscribeProfile = observeUserProfile(
+            firebaseUser.uid,
+            (userDoc) => {
+              setProfile(userDoc || { role: 'user' });
+              setProfileError('');
+            },
+            (error) => {
+              console.error('Error observing user profile:', error);
+              setProfileError(error?.message || 'Live profile sync failed.');
+            }
+          );
         } catch (error) {
-          console.error("Error fetching user profile:", error);
-          setProfile({ role: 'user' });
+          console.error('Error subscribing to user profile:', error);
+          setProfileError(error?.message || 'Unable to subscribe to profile changes.');
         }
       } else {
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem(`${PROFILE_CACHE_PREFIX}${user?.uid || ''}`);
-        }
         setProfile(null);
+        setProfileError('');
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      if (authInitTimeout) {
+        clearTimeout(authInitTimeout);
+      }
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+      }
+      unsubscribeAuth();
+    };
   }, []);
 
   const value = {
     user,
     profile,
+    profileError,
     loading,
     isAdmin: profile?.role === 'admin',
     isEditor: profile?.role === 'editor',
@@ -66,5 +125,3 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
-
-export const useAuth = () => useContext(AuthContext);

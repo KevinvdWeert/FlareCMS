@@ -8,12 +8,22 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function userDocExists(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid));
+    }
+
+    function getRole(uid) {
+      return userDocExists(uid)
+        ? get(/databases/$(database)/documents/users/$(uid)).data.role
+        : null;
+    }
+
     function isAdmin() {
-      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isAuthenticated() && getRole(request.auth.uid) == 'admin';
     }
 
     function isEditor() {
-      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'editor';
+      return isAuthenticated() && getRole(request.auth.uid) == 'editor';
     }
 
     function isStaff() {
@@ -30,8 +40,11 @@ service cloud.firestore {
 
     // Users Collection
     match /users/{userId} {
-      // Users can read themselves; admins can read all
-      allow read: if (isAuthenticated() && request.auth.uid == userId) || isAdmin();
+      // Users can always read their own profile document.
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+
+      // Admins can read all user documents.
+      allow read: if isAdmin();
       
       // Users can create/update their own non-role fields without elevating permissions
       allow create: if isAdmin() || (

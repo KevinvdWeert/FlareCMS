@@ -1,9 +1,9 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '../features/auth/AuthContext';
+import { useAuth } from '../features/auth/useAuth';
 
 export const ProtectedRoute = ({ requireAdmin = false }) => {
-  const { user, profile, loading, isStaff, isAdmin } = useAuth();
+  const { user, profile, profileError, loading, isStaff, isAdmin } = useAuth();
 
   if (loading) {
     return <div>Loading...</div>;
@@ -18,6 +18,22 @@ export const ProtectedRoute = ({ requireAdmin = false }) => {
       <div style={{ maxWidth: '760px', margin: '40px auto', padding: '20px', fontFamily: 'sans-serif' }}>
         <h2>Forbidden: Admins only.</h2>
         <p>Your account is signed in, but does not have the required admin role.</p>
+      </div>
+    );
+  }
+
+  if (profileError && !isStaff) {
+    return (
+      <div style={{ maxWidth: '760px', margin: '40px auto', padding: '20px', fontFamily: 'sans-serif' }}>
+        <h2>Cannot verify staff role right now.</h2>
+        <p>The app could not read your profile from Firestore.</p>
+        <p style={{ color: '#b91c1c' }}>{profileError}</p>
+        <p>
+          UID: <strong>{user?.uid}</strong>
+        </p>
+        <p>
+          Confirm Firestore API is enabled for project <code>custom-cms-1c4c7</code> and refresh this page.
+        </p>
       </div>
     );
   }

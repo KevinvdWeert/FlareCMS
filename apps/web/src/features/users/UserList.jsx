@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { fetchUsers, updateUserRole } from '../../lib/firestore';
-import { useAuth } from '../auth/AuthContext';
+import { useAuth } from '../auth/useAuth';
 
 export const UserList = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [updatingUid, setUpdatingUid] = useState('');
   const { user: currentUser } = useAuth(); // Logged in user
 
   const loadUsers = async () => {
@@ -24,69 +25,71 @@ export const UserList = () => {
   }, []);
 
   const handleRoleChange = async (uid, newRole) => {
-    if (uid === currentUser.uid) {
-      alert("You cannot change your own role.");
+    if (!currentUser) {
       return;
     }
     try {
+      setUpdatingUid(uid);
       await updateUserRole(uid, newRole);
       // Update local state
-      setUsers(users.map(u => u.id === uid ? { ...u, role: newRole } : u));
+      setUsers((prev) => prev.map((u) => (u.id === uid ? { ...u, role: newRole } : u)));
     } catch (err) {
       console.error(err);
       alert("Failed to update role. Make sure you are an admin.");
+    } finally {
+      setUpdatingUid('');
     }
   };
 
   return (
-    <div>
-      <h1 style={{ marginBottom: '30px', color: '#1e293b' }}>User Management</h1>
+    <div className="admin-section">
+      <div className="admin-section-header">
+        <h1>User Management</h1>
+      </div>
       
       {loading ? (
-        <p>Loading users...</p>
+        <p className="admin-muted-text">Loading users...</p>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <thead style={{ background: '#f1f5f9', textAlign: 'left' }}>
-            <tr>
-              <th style={{ padding: '15px' }}>Email</th>
-              <th style={{ padding: '15px' }}>Display Name</th>
-              <th style={{ padding: '15px' }}>Role</th>
-              <th style={{ padding: '15px' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map(u => (
-              <tr key={u.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                <td style={{ padding: '15px' }}>{u.email || 'N/A'}</td>
-                <td style={{ padding: '15px' }}>{u.displayName || 'No Name'}</td>
-                <td style={{ padding: '15px' }}>
-                  <span style={{ 
-                    padding: '4px 8px', 
-                    borderRadius: '12px', 
-                    fontSize: '12px',
-                    background: u.role === 'admin' ? '#fecaca' : (u.role === 'editor' ? '#bbf7d0' : '#e2e8f0'),
-                    color: u.role === 'admin' ? '#991b1b' : (u.role === 'editor' ? '#166534' : '#475569')
-                  }}>
-                    {u.role || 'user'}
-                  </span>
-                  {u.id === currentUser.uid && <span style={{ marginLeft: '10px', fontSize: '12px', color: '#94a3b8' }}>(You)</span>}
-                </td>
-                <td style={{ padding: '15px' }}>
-                  <select 
-                    value={u.role || 'user'} 
-                    onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                    disabled={u.id === currentUser.uid}
-                    style={{ padding: '5px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                  >
-                    <option value="user">User</option>
-                    <option value="editor">Editor</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </td>
+        <div className="admin-surface">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Display Name</th>
+                <th>Role</th>
+                <th>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {users.map(u => (
+                <tr key={u.id}>
+                  <td>{u.email || 'N/A'}</td>
+                  <td>{u.displayName || 'No Name'}</td>
+                  <td>
+                    <span className={`admin-badge ${u.role === 'admin' ? 'admin' : (u.role === 'editor' ? 'editor' : 'user')}`}>
+                      {u.role || 'user'}
+                    </span>
+                    {u.id === currentUser.uid && <span className="admin-inline-note">(You)</span>}
+                  </td>
+                  <td>
+                    <select
+                      value={u.role || 'user'}
+                      onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                      disabled={updatingUid === u.id}
+                      title="Change role"
+                      className="admin-select"
+                    >
+                      <option value="user">User</option>
+                      <option value="editor">Editor</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                    {updatingUid === u.id && <span className="admin-inline-note">Saving...</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

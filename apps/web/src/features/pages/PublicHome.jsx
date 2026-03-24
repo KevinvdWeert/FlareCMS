@@ -5,12 +5,27 @@ import { Link } from 'react-router-dom';
 export const PublicHome = () => {
   const [pages, setPages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     const fetchPublishedPages = async () => {
-      const data = await getPages(true); // onlyPublished = true
-      setPages(data);
-      setLoading(false);
+      setLoading(true);
+      setLoadError('');
+      try {
+        const data = await Promise.race([
+          getPages(true),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Request timed out while loading pages.')), 5000)
+          )
+        ]); // onlyPublished = true
+        setPages(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error('Failed to load published pages:', error);
+        setPages([]);
+        setLoadError('Loading content is taking too long. Please refresh to retry.');
+      } finally {
+        setLoading(false);
+      }
     };
     fetchPublishedPages();
   }, []);
@@ -28,9 +43,6 @@ export const PublicHome = () => {
       <header className="site-header">
         <div className="header-content">
           <Link to="/" className="site-logo">FlareCMS</Link>
-          <nav>
-            <Link to="/admin/login" className="login-btn">Admin Login</Link>
-          </nav>
         </div>
       </header>
       
@@ -39,6 +51,12 @@ export const PublicHome = () => {
           <h1>Welcome to FlareCMS</h1>
           <p>A beautiful, lightning-fast content management system built with React & Firebase.</p>
         </div>
+
+        {loadError && (
+          <div className="empty-state" style={{ marginBottom: '20px' }}>
+            <p>{loadError}</p>
+          </div>
+        )}
         
         <div className="page-grid">
           {pages.length > 0 ? (

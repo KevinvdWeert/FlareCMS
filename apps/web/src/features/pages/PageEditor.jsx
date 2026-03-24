@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPageById, createPage, updatePage } from '../../lib/firestore';
 import { uploadFeaturedImage } from '../../lib/storage';
-import { useAuth } from '../auth/AuthContext';
+import { useAuth } from '../auth/useAuth';
 import { BlockEditor } from '../blocks/BlockEditor';
 import { ArrowLeft, Save } from 'lucide-react';
 import { validateSlug, validateTitle } from '../../lib/validation';
@@ -117,65 +117,69 @@ export const PageEditor = () => {
   if (loading) return <div>Loading...</div>;
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', fontFamily: 'sans-serif' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <button onClick={() => navigate('/admin/pages')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', color: '#64748b' }}>
-          <ArrowLeft size={18} /> Back to Pages
+    <div className="admin-editor-shell">
+      <div className="admin-editor-topbar">
+        <button onClick={() => navigate('/admin/pages')} className="admin-editor-back" type="button">
+          <ArrowLeft size={18} />
+          <span>Back to Pages</span>
         </button>
-        <button 
+        <button
           onClick={handleSave} 
           disabled={saving}
-          style={{ background: '#0ea5e9', color: 'white', padding: '10px 15px', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
-          <Save size={18} /> {saving ? 'Saving...' : 'Save Page'}
+          className="admin-button-primary"
+          type="button"
+        >
+          <Save size={18} />
+          <span>{saving ? 'Saving...' : 'Save Page'}</span>
         </button>
       </div>
 
-      {error && <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '10px', borderRadius: '4px', marginBottom: '20px' }}>{error}</div>}
+      {error && <div className="admin-editor-error">{error}</div>}
 
-      <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '30px' }}>
+      <section className="admin-surface admin-editor-card">
         <h2>Page Details</h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '15px' }}>
+        <div className="admin-editor-grid">
           
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+          <label className="admin-editor-field admin-editor-field-full">
             <strong>Title</strong>
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} style={{ padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="admin-editor-input" />
           </label>
 
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+          <label className="admin-editor-field">
             <strong>Slug</strong>
-            <input type="text" value={slug} onChange={(e) => setSlug(e.target.value)} style={{ padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            <input type="text" value={slug} onChange={(e) => setSlug(e.target.value)} className="admin-editor-input" />
           </label>
 
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+          <label className="admin-editor-field">
             <strong>Status</strong>
-            <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className="admin-editor-input">
               <option value="draft">Draft</option>
               <option value="published">Published</option>
             </select>
           </label>
 
-          <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '4px', border: '1px dashed #cbd5e1' }}>
+          <div className="admin-editor-upload admin-editor-field-full">
             <strong>Featured Image</strong>
             {featuredImage && (
-              <div style={{ margin: '10px 0' }}>
-                <p style={{ fontSize: '14px', color: '#64748b' }}>Current: {featuredImage.alt}</p>
-                <button onClick={() => setFeaturedImage(null)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Remove</button>
+              <div className="admin-editor-current-image">
+                <p>Current: {featuredImage.alt}</p>
+                <button onClick={() => setFeaturedImage(null)} className="admin-editor-remove" type="button">Remove</button>
               </div>
             )}
-            <div style={{ marginTop: '10px' }}>
+            <div className="admin-editor-upload-input-wrap">
               <input type="file" accept="image/*" onChange={handleFeaturedImageUpload} disabled={saving} />
-              {!id && <p style={{ fontSize: '12px', color: '#ef4444', marginTop: '5px' }}>Save page first to upload image.</p>}
+              {!id && <p className="admin-editor-hint-danger">Save page first to upload image.</p>}
             </div>
           </div>
 
         </div>
-      </div>
+      </section>
 
-      <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+      <section className="admin-surface admin-editor-card">
         <h2>Content Blocks</h2>
-        <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '20px' }}>Add and arrange blocks to build the page content.</p>
+        <p className="admin-muted-text" style={{ marginBottom: '14px' }}>Add and arrange blocks to build the page content.</p>
         <BlockEditor blocks={blocks} setBlocks={setBlocks} pageId={id} />
-      </div>
+      </section>
 
     </div>
   );
