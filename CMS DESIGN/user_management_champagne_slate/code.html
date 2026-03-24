@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-variant": "#e4e3d7",
+              "on-primary-fixed": "#2d1600",
+              "primary-fixed-dim": "#f0bd8d",
+              "tertiary-fixed": "#c1e8ff",
+              "primary-container": "#966c42",
+              "surface-container-highest": "#e4e3d7",
+              "surface-container": "#efeee3",
+              "outline": "#82756a",
+              "secondary-fixed-dim": "#bcc7de",
+              "on-background": "#1b1c15",
+              "background": "#fbfaee",
+              "on-tertiary-container": "#fbfcff",
+              "on-primary": "#ffffff",
+              "on-tertiary": "#ffffff",
+              "error-container": "#ffdad6",
+              "inverse-surface": "#303129",
+              "tertiary": "#386175",
+              "on-tertiary-fixed-variant": "#214b5f",
+              "error": "#ba1a1a",
+              "surface-dim": "#dbdbcf",
+              "on-secondary-fixed": "#111c2d",
+              "inverse-on-surface": "#f2f1e5",
+              "on-surface-variant": "#50453b",
+              "surface-tint": "#7d562f",
+              "surface": "#fbfaee",
+              "tertiary-fixed-dim": "#a3cce4",
+              "on-tertiary-fixed": "#001e2b",
+              "surface-container-high": "#e9e9dd",
+              "tertiary-container": "#527a8f",
+              "secondary-fixed": "#d8e3fb",
+              "on-primary-container": "#fffbff",
+              "surface-container-lowest": "#ffffff",
+              "on-secondary-fixed-variant": "#3c475a",
+              "outline-variant": "#d4c4b7",
+              "on-secondary": "#ffffff",
+              "secondary": "#545f73",
+              "primary": "#7a542c",
+              "on-error-container": "#93000a",
+              "surface-container-low": "#f5f4e8",
+              "surface-bright": "#fbfaee",
+              "on-surface": "#1b1c15",
+              "secondary-container": "#d5e0f8",
+              "on-error": "#ffffff",
+              "primary-fixed": "#ffdcbe",
+              "inverse-primary": "#f0bd8d",
+              "on-primary-fixed-variant": "#623f1a",
+              "on-secondary-container": "#586377"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Manrope"],
+              "label": ["Manrope"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+            font-size: 20px;
+        }
+        .editorial-shadow {
+            box-shadow: 0 20px 40px rgba(27, 28, 21, 0.06);
+        }
+        .bronze-gradient {
+            background: linear-gradient(135deg, #7a542c 0%, #966c42 100%);
+        }
+        body {
+            font-family: 'Manrope', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- Sidebar Navigation -->
+<aside class="fixed left-0 top-0 h-full z-40 flex flex-col p-6 h-screen w-64 border-r-0 bg-surface-container-highest font-manrope antialiased tracking-tight">
+<div class="mb-12 px-4">
+<h1 class="text-2xl font-bold tracking-tighter text-on-surface">Editorial</h1>
+<p class="text-xs tracking-widest uppercase opacity-50 text-on-surface-variant">Monolith CMS</p>
+</div>
+<nav class="flex flex-col gap-2">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">library_books</span>
+<span>ContentLibrary</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">edit_note</span>
+<span>ContentEditor</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-md scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">perm_media</span>
+<span>MediaManager</span>
+</a>
+<!-- Active Navigation -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-md border border-primary bg-surface-container-lowest text-primary font-bold scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">manage_accounts</span>
+<span>UserManagement</span>
+</a>
+</nav>
+<div class="mt-auto p-4 flex items-center gap-3 bg-surface-container-low rounded-xl">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="portrait of a professional creative director in a minimalist studio setting with soft natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8-RQ2UV9pilBul25fhcFCbqEw0bTMxTA_3G70FPc1YYClHB94ajNPA4Ygy2mO0gBlTI3_63d98jKK6iPj9ieCDztH8GU6Q2j-VaoisYGrEcrUMyslK-7xWQxJhwoNlbemt0GvqBUgFEoQr-QlDLv3wVWAdnY3HeJNUSuEQe1inFll_wqCjS6MSEfzo05rHKCvX4a5MA3ZffhVoeQbP3ogVE_rAfz5gEM9z9mSIzpRUHomL3_WtwHBN-ZB-PImRnJuUXyAfQrbeXul"/>
+<div class="overflow-hidden">
+<p class="text-sm font-bold truncate">Julian Thorne</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-tighter">Administrator</p>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 min-h-screen">
+<!-- Top Navigation -->
+<header class="sticky top-0 right-0 w-full z-30 flex justify-between items-center px-12 py-6 bg-surface/80 backdrop-blur-md font-manrope text-sm font-medium border-b border-outline-variant/15">
+<div class="flex items-center bg-surface-container-lowest px-4 py-2 rounded-lg border border-outline-variant/10 w-96">
+<span class="material-symbols-outlined text-outline">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-full placeholder:text-outline-variant" placeholder="Search accounts, roles or permissions..." type="text"/>
+</div>
+<div class="flex items-center gap-6">
+<button class="relative text-on-surface-variant hover:text-primary transition-opacity opacity-80 hover:opacity-100">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-primary rounded-full border-2 border-surface"></span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-opacity opacity-80 hover:opacity-100">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="h-6 w-px bg-outline-variant/20"></div>
+<button class="bronze-gradient text-white px-5 py-2 rounded-md font-bold text-xs flex items-center gap-2 editorial-shadow">
+<span class="material-symbols-outlined text-sm">person_add</span>
+                    Invite User
+                </button>
+</div>
+</header>
+<!-- Editorial Content -->
+<div class="px-12 py-12 max-w-7xl mx-auto">
+<!-- Editorial Masthead -->
+<section class="mb-16 relative">
+<div class="flex flex-col md:flex-row items-end gap-12">
+<div class="w-full md:w-3/5">
+<h2 class="text-6xl font-extrabold tracking-tighter leading-none mb-6">User<br/>Ecosystem.</h2>
+<p class="text-on-surface-variant text-lg max-w-md leading-relaxed">
+                            A curated overview of your editorial staff and system contributors. Manage hierarchies with surgical precision.
+                        </p>
+</div>
+<div class="w-full md:w-2/5 bg-surface-container-highest p-8 rounded-2xl relative overflow-hidden h-48 editorial-shadow">
+<div class="relative z-10 flex flex-col justify-between h-full">
+<span class="text-xs uppercase tracking-[0.2em] font-bold text-primary">System Integrity</span>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-black text-on-surface">124</span>
+<span class="text-on-surface-variant text-sm">Active Contributors</span>
+</div>
+</div>
+<div class="absolute -right-4 -bottom-4 opacity-10">
+<span class="material-symbols-outlined text-[120px]">verified_user</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Stats Bento Grid -->
+<section class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-16">
+<div class="bg-surface-container-lowest p-6 rounded-xl editorial-shadow">
+<span class="material-symbols-outlined text-primary mb-4">shield_person</span>
+<p class="text-xs text-on-surface-variant font-medium uppercase tracking-wider mb-1">Admins</p>
+<h4 class="text-2xl font-bold">12</h4>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl editorial-shadow">
+<span class="material-symbols-outlined text-primary mb-4">history_edu</span>
+<p class="text-xs text-on-surface-variant font-medium uppercase tracking-wider mb-1">Editors</p>
+<h4 class="text-2xl font-bold">48</h4>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl editorial-shadow">
+<span class="material-symbols-outlined text-primary mb-4">ink_pen</span>
+<p class="text-xs text-on-surface-variant font-medium uppercase tracking-wider mb-1">Writers</p>
+<h4 class="text-2xl font-bold">56</h4>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl editorial-shadow">
+<span class="material-symbols-outlined text-primary mb-4">group_add</span>
+<p class="text-xs text-on-surface-variant font-medium uppercase tracking-wider mb-1">Pending</p>
+<h4 class="text-2xl font-bold">8</h4>
+</div>
+</section>
+<!-- User Table Section -->
+<section class="bg-surface-container-low rounded-3xl p-1 overflow-hidden">
+<div class="bg-surface-container-lowest rounded-[1.4rem] overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-highest/30">
+<th class="px-8 py-6 text-[10px] uppercase tracking-widest font-bold text-on-secondary-fixed-variant">Identity</th>
+<th class="px-8 py-6 text-[10px] uppercase tracking-widest font-bold text-on-secondary-fixed-variant">Authority Role</th>
+<th class="px-8 py-6 text-[10px] uppercase tracking-widest font-bold text-on-secondary-fixed-variant">Permissions</th>
+<th class="px-8 py-6 text-[10px] uppercase tracking-widest font-bold text-on-secondary-fixed-variant">Last Active</th>
+<th class="px-8 py-6 text-[10px] uppercase tracking-widest font-bold text-on-secondary-fixed-variant"></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors group">
+<td class="px-8 py-6">
+<div class="flex items-center gap-4">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="editorial headshot of a confident woman in chic office attire, warm earthy studio tones" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAONamY9-CIe4lkT7rCiMwRxjyEjPzh6oTESb_QWlHDdr8y9aJrFHiYqkHs_0HNkfQMei5YpKke9IS5_lHWx1O8WvB2NBCKk_zvAl_4ylUvgeUY9j_xc1xZL1QG3J-X6Y5IQdAan8tJFN7IIxaCkqQl_pp2CnsbwL019YNu_Mi0r_lzGpoZgxG4Dhtfb-h07CGsFwth19uWFcry9kX5_lFKwQsBcH494rPzpY21Cnpd1rNNnRdFsC9uoM478bNbZLLIILVr9STqQwgR"/>
+<div>
+<p class="font-bold text-on-surface">Elena Vance</p>
+<p class="text-xs text-on-surface-variant">e.vance@monolith.editorial</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6">
+<span class="text-xs font-bold px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">Lead Editor</span>
+</td>
+<td class="px-8 py-6">
+<div class="flex gap-1">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<div class="w-2 h-2 rounded-full bg-outline-variant/30"></div>
+</div>
+</td>
+<td class="px-8 py-6">
+<p class="text-sm text-on-surface-variant">2 mins ago</p>
+</td>
+<td class="px-8 py-6 text-right">
+<button class="text-outline-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors group">
+<td class="px-8 py-6">
+<div class="flex items-center gap-4">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="portrait of a creative man with glasses, soft cinematic lighting, professional background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUkI0pnQ7jcV7W1ImNGdPnvGi-vegzx3x9omxzfm6WHVg1ZiVUAjKPwVoKFimOBkAhWsqPydPsqgFiG73w5zPUE8b1K21k416XqJlJmLJma0S7u0TQsQoF10RvDMGNJ0aTFJabwOWNiUtMZ23ygjFspiEEgCPt48sAQHCm7Nbw8G6dKfidHvgzPIU9eJw9EidaZSHitPDGPUkCAqR2oXd6c2Yzk9v0Al0duFWPN4BBCoS3PnOUAIHOUxUoCP1JaPV8cl8530FRJdXr"/>
+<div>
+<p class="font-bold text-on-surface">Marcus Thorne</p>
+<p class="text-xs text-on-surface-variant">m.thorne@monolith.editorial</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6">
+<span class="text-xs font-bold px-3 py-1 rounded-full bg-secondary/10 text-secondary border border-secondary/20">System Admin</span>
+</td>
+<td class="px-8 py-6">
+<div class="flex gap-1">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+</div>
+</td>
+<td class="px-8 py-6">
+<p class="text-sm text-on-surface-variant">Active Now</p>
+</td>
+<td class="px-8 py-6 text-right">
+<button class="text-outline-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors group">
+<td class="px-8 py-6">
+<div class="flex items-center gap-4">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="close up profile of a sophisticated woman, elegant lighting, neutral champagne background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCDDBtkI2orgDoZvsrzLnOvcf-8NXH1eDmLIYQbayfjxLLa_SpAf97zh2dZUjUgRNs5ZVxXn4YlFGGDyeKJUGCH982w5FuKt8sMgGXstaeXCE6v4gpWGfhiPuwWzrtDczQFovBCr3MKhjrE_GlBWnGwx8UceywBb1f04NNqDEt4lWe5XoJCJb3u8_-j5anKXcDwUJOSNucQ8p9BAqGOowY6OCoCYx2cQ3qDSM1JP0x8aqCwT1cKhne91kneuShbkaLMjcJia7eMNRx"/>
+<div>
+<p class="font-bold text-on-surface">Sienna Miller</p>
+<p class="text-xs text-on-surface-variant">s.miller@monolith.editorial</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6">
+<span class="text-xs font-bold px-3 py-1 rounded-full bg-surface-container-highest text-on-surface-variant border border-outline-variant/30">Contributor</span>
+</td>
+<td class="px-8 py-6">
+<div class="flex gap-1">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<div class="w-2 h-2 rounded-full bg-outline-variant/30"></div>
+<div class="w-2 h-2 rounded-full bg-outline-variant/30"></div>
+<div class="w-2 h-2 rounded-full bg-outline-variant/30"></div>
+</div>
+</td>
+<td class="px-8 py-6">
+<p class="text-sm text-on-surface-variant">3 hours ago</p>
+</td>
+<td class="px-8 py-6 text-right">
+<button class="text-outline-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors group">
+<td class="px-8 py-6">
+<div class="flex items-center gap-4">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="portrait of a young man with a creative expression, bright airy lighting, soft focused studio" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB19mr3szdYqxt6bXwXeIvcKb9dbkJxR0eTtVF4r1SLA_oTxQ2h43r4HxKK2nS4Y_4-kLfaEDntys7b0eqkDcTB7C_tFgYg9nJ99rveRf5NXPDdDeJRuwnZhtw7W9fUqfqgEBCrMJmF3Yb2g2Z8Rd3PTGNdqdHV5ZaYuEl3ynqiVnU3XjFiB6UfU0As5f_VST1AO9TW5FSMWTu8u4RmeJU4uOMCobOcY0O2voPuQDwmZXgJ_Xt7WxejQALZQYA1VP1xHak7h2YwqVfD"/>
+<div>
+<p class="font-bold text-on-surface">Julian Black</p>
+<p class="text-xs text-on-surface-variant">j.black@monolith.editorial</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6">
+<span class="text-xs font-bold px-3 py-1 rounded-full bg-surface-container-highest text-on-surface-variant border border-outline-variant/30">Staff Writer</span>
+</td>
+<td class="px-8 py-6">
+<div class="flex gap-1">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<div class="w-2 h-2 rounded-full bg-outline-variant/30"></div>
+<div class="w-2 h-2 rounded-full bg-outline-variant/30"></div>
+</div>
+</td>
+<td class="px-8 py-6">
+<p class="text-sm text-on-surface-variant">Yesterday</p>
+</td>
+<td class="px-8 py-6 text-right">
+<button class="text-outline-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+<!-- Table Footer / Pagination -->
+<div class="px-8 py-6 bg-surface-container-low/30 flex justify-between items-center border-t border-outline-variant/10">
+<p class="text-xs text-on-surface-variant">Showing <span class="font-bold text-on-surface">4</span> of <span class="font-bold text-on-surface">124</span> members</p>
+<div class="flex gap-4">
+<button class="text-xs font-bold text-primary opacity-40 cursor-not-allowed">Previous</button>
+<button class="text-xs font-bold text-primary hover:underline">Next Page</button>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Role Preview Panel (Asymmetric Editorial Element) -->
+<section class="bg-surface-container-highest px-12 py-20 mt-12 grid grid-cols-1 md:grid-cols-2 gap-20">
+<div>
+<h3 class="text-4xl font-black tracking-tight mb-8">Role<br/>Framework</h3>
+<p class="text-on-surface-variant leading-relaxed mb-10">
+                    Define the boundaries of creation. Our modular role system allows you to construct custom access layers that evolve with your publication.
+                </p>
+<div class="space-y-6">
+<div class="flex items-start gap-4">
+<div class="bronze-gradient w-1 h-12"></div>
+<div>
+<p class="font-bold">Content Hierarchies</p>
+<p class="text-sm text-on-surface-variant">Manage who can publish, edit, or simply draft without overlapping jurisdictions.</p>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<div class="bg-secondary w-1 h-12"></div>
+<div>
+<p class="font-bold">Asset Governance</p>
+<p class="text-sm text-on-surface-variant">Control access to the high-resolution media library and brand repositories.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="aspect-square bg-surface-container-lowest p-8 flex flex-col justify-end editorial-shadow rounded-2xl">
+<span class="text-4xl font-light text-primary mb-4 opacity-30">01</span>
+<p class="text-lg font-bold">Observer</p>
+<p class="text-xs text-on-surface-variant">Read only access</p>
+</div>
+<div class="aspect-square bg-primary-container p-8 flex flex-col justify-end editorial-shadow rounded-2xl">
+<span class="text-4xl font-light text-surface mb-4 opacity-30">02</span>
+<p class="text-lg font-bold text-white">Curator</p>
+<p class="text-xs text-white/70">Full content control</p>
+</div>
+<div class="aspect-square bg-secondary p-8 flex flex-col justify-end editorial-shadow rounded-2xl">
+<span class="text-4xl font-light text-white mb-4 opacity-30">03</span>
+<p class="text-lg font-bold text-white">Technician</p>
+<p class="text-xs text-white/70">API and Core access</p>
+</div>
+<div class="aspect-square bg-surface-container-lowest p-8 flex flex-col justify-end editorial-shadow rounded-2xl border border-primary/20">
+<span class="text-4xl font-light text-primary mb-4 opacity-30">04</span>
+<p class="text-lg font-bold">Architect</p>
+<p class="text-xs text-on-surface-variant">Global permissions</p>
+</div>
+</div>
+</section>
+<!-- Footer -->
+<footer class="px-12 py-12 flex justify-between items-center text-on-surface-variant border-t border-outline-variant/10">
+<p class="text-xs tracking-widest font-bold uppercase">Editorial Monolith CMS v4.2</p>
+<div class="flex gap-8 text-xs font-medium">
+<a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-primary transition-colors" href="#">Terms of Governance</a>
+<a class="hover:text-primary transition-colors" href="#">System Status</a>
+</div>
+</footer>
+</main>
+</body></html>

@@ -1,0 +1,40 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isEditor() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'editor';
+    }
+
+    function isStaff() {
+      return isAdmin() || isEditor();
+    }
+
+    // Pages Collection
+    match /pages/{pageId} {
+      // Anyone can read published pages
+      allow read: if resource.data.status == 'published' || isStaff();
+      // Only staff can create/update/delete pages
+      allow write: if isStaff();
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      // Users can read themselves; admins can read all
+      allow read: if request.auth.uid == userId || isAdmin();
+      
+      // Admins can update all (including roles); users cannot write their own doc to prevent self-elevation
+      allow write: if isAdmin();
+    }
+  }
+}

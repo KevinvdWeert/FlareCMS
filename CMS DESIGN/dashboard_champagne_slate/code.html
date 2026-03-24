@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-variant": "#e4e3d7",
+              "on-primary-fixed": "#2d1600",
+              "primary-fixed-dim": "#f0bd8d",
+              "tertiary-fixed": "#c1e8ff",
+              "primary-container": "#966c42",
+              "surface-container-highest": "#e4e3d7",
+              "surface-container": "#efeee3",
+              "outline": "#82756a",
+              "secondary-fixed-dim": "#bcc7de",
+              "on-background": "#1b1c15",
+              "background": "#fbfaee",
+              "on-tertiary-container": "#fbfcff",
+              "on-primary": "#ffffff",
+              "on-tertiary": "#ffffff",
+              "error-container": "#ffdad6",
+              "inverse-surface": "#303129",
+              "tertiary": "#386175",
+              "on-tertiary-fixed-variant": "#214b5f",
+              "error": "#ba1a1a",
+              "surface-dim": "#dbdbcf",
+              "on-secondary-fixed": "#111c2d",
+              "inverse-on-surface": "#f2f1e5",
+              "on-surface-variant": "#50453b",
+              "surface-tint": "#7d562f",
+              "surface": "#fbfaee",
+              "tertiary-fixed-dim": "#a3cce4",
+              "on-tertiary-fixed": "#001e2b",
+              "surface-container-high": "#e9e9dd",
+              "tertiary-container": "#527a8f",
+              "secondary-fixed": "#d8e3fb",
+              "on-primary-container": "#fffbff",
+              "surface-container-lowest": "#ffffff",
+              "on-secondary-fixed-variant": "#3c475a",
+              "outline-variant": "#d4c4b7",
+              "on-secondary": "#ffffff",
+              "secondary": "#545f73",
+              "primary": "#7a542c",
+              "on-error-container": "#93000a",
+              "surface-container-low": "#f5f4e8",
+              "surface-bright": "#fbfaee",
+              "on-surface": "#1b1c15",
+              "secondary-container": "#d5e0f8",
+              "on-error": "#ffffff",
+              "primary-fixed": "#ffdcbe",
+              "inverse-primary": "#f0bd8d",
+              "on-primary-fixed-variant": "#623f1a",
+              "on-secondary-container": "#586377"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Manrope"],
+              "label": ["Manrope"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Manrope', sans-serif; }
+    </style>
+</head>
+<body class="bg-background text-on-surface selection:bg-primary/20">
+<!-- SideNavBar (Authority Source: JSON) -->
+<aside class="fixed left-0 top-0 h-full z-40 flex flex-col p-6 h-screen w-64 border-r-0 bg-[#e4e3d7] font-manrope antialiased tracking-tight">
+<div class="mb-10 px-4">
+<h1 class="text-2xl font-bold tracking-tighter text-[#1b1c15]">Editorial</h1>
+<p class="text-[10px] uppercase tracking-widest text-[#7a542c] font-bold">Monolith CMS</p>
+</div>
+<nav class="flex-1 space-y-2">
+<!-- Active Tab: Dashboard -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-md border border-[#7a542c] bg-[#fbfaee] text-[#7a542c] font-bold transition-all duration-300 scale-95 active:scale-90" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#50453b] hover:text-[#7a542c] hover:bg-[#f5f4e8] transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="library_books">library_books</span>
+<span>ContentLibrary</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#50453b] hover:text-[#7a542c] hover:bg-[#f5f4e8] transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="edit_note">edit_note</span>
+<span>ContentEditor</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#50453b] hover:text-[#7a542c] hover:bg-[#f5f4e8] transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="perm_media">perm_media</span>
+<span>MediaManager</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#50453b] hover:text-[#7a542c] hover:bg-[#f5f4e8] transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="manage_accounts">manage_accounts</span>
+<span>UserManagement</span>
+</a>
+</nav>
+<div class="mt-auto pt-6 px-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-container/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="person">person</span>
+</div>
+<div>
+<p class="text-xs font-bold text-on-surface">Admin</p>
+<p class="text-[10px] text-on-surface-variant">Luxury CMS Logo</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 min-h-screen">
+<!-- TopNavBar (Authority Source: JSON) -->
+<header class="sticky top-0 right-0 w-full z-30 flex justify-between items-center px-8 py-4 bg-[#fbfaee]/80 backdrop-blur-md border-b border-[#d4c4b7]/15 font-manrope text-sm font-medium">
+<div class="flex items-center gap-6">
+<div class="relative group">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-on-surface-variant/50 text-lg" data-icon="search">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container-lowest border border-[#d4c4b7]/15 rounded-md focus:ring-0 focus:border-primary w-64 transition-all duration-300" placeholder="Search system..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex gap-4">
+<button class="opacity-80 hover:opacity-100 transition-opacity text-[#7a542c]">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="opacity-80 hover:opacity-100 transition-opacity text-[#7a542c]">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+<div class="h-8 w-[1px] bg-outline-variant/15"></div>
+<div class="flex items-center gap-3">
+<span class="text-xs font-semibold text-on-surface">Administrator Profile</span>
+<div class="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="close-up portrait of professional editor in a minimalist studio environment with soft architectural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7ZNrJvGn4Lq-s_KaWyJ5Q0XqGZsYWopU-I1dVwJYKNHyHn8t5ln4Sj9skeOGT0SFoi5YIaywt8qNaxaDRc1m5iLqW92UFt9zmBE1dJMljnJs0dihqL4UJbm-I-1IMTXeVsKMe3AsudlJ6wMIiV0rJlQMQbknqZC-yZ2z6L-17i-p4hgToJL2uVzf9uWaE-HZn0Ei4pDo0BFTi8CZgnO7wkfKzBkga-NtxXrU7v49AFEu0Wlxvrjou4SmN6PKNG-QVqziEKIQVS8zK"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Content Canvas -->
+<div class="p-12 space-y-16">
+<!-- Editorial Masthead Section -->
+<section class="relative">
+<div class="grid grid-cols-12 gap-8 items-end">
+<div class="col-span-7">
+<span class="text-[12px] tracking-[0.3em] uppercase text-primary font-bold mb-4 block">System Overview</span>
+<h2 class="text-7xl font-extrabold tracking-tighter leading-none text-on-background mb-8">
+                            The Editorial<br/><span class="text-primary italic">Monolith</span>
+</h2>
+<p class="text-on-surface-variant text-lg max-w-md leading-relaxed font-light">
+                            Welcome back. Your curated workspace is synchronized and ready for the next edition. Recent analytics show a 24% increase in reader engagement.
+                        </p>
+</div>
+<div class="col-span-5 relative">
+<div class="aspect-[4/3] bg-surface-container-highest rounded-xl overflow-hidden shadow-2xl">
+<img class="w-full h-full object-cover opacity-90" data-alt="luxury minimalist office interior with marble surfaces, bronze accents, and large windows overlooking a foggy cityscape" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAgUBQAWJrC54CUboTD5aVpmw4s8bBR8euryk5NvLW6lDli_CdfHPyiEjGPFbYZh9cqJ5BDHrfZIo-nHM9sY5GAT-OCtS2QYrkUKB5zonsZZpCgIzWPnGxw8Wn8m2_N5dLmg-vDXoJl-yNfNforK1zOvlf0wD10Dl22TxKhxhsOBLE7sOauZzKhevTOMzu4qLjs6JJ8IOL-qOuMk6WCqALMaVd6Umcj8pRFGSx79BZNT5bMyZoOf560ymn1frnF9oXpADhsrjqWkyqf"/>
+</div>
+<div class="absolute -bottom-6 -left-6 bg-surface-container-lowest/80 backdrop-blur-xl p-6 rounded-lg shadow-xl border border-outline-variant/10">
+<p class="text-3xl font-bold text-primary">12.4k</p>
+<p class="text-[10px] uppercase tracking-widest text-secondary">Live Visitors</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Bento Grid Dashboard Components -->
+<section class="grid grid-cols-3 gap-8">
+<!-- Traffic Trend (Large) -->
+<div class="col-span-2 bg-surface-container-low p-8 rounded-2xl relative overflow-hidden">
+<div class="flex justify-between items-start mb-12">
+<div>
+<h3 class="text-xl font-bold text-on-surface">Site Traffic Trends</h3>
+<p class="text-sm text-on-surface-variant">Performance over the last 30 days</p>
+</div>
+<div class="flex gap-2">
+<span class="px-3 py-1 bg-surface-container-highest rounded-full text-[10px] font-bold text-primary">DAILY</span>
+<span class="px-3 py-1 bg-primary text-on-primary rounded-full text-[10px] font-bold">WEEKLY</span>
+</div>
+</div>
+<!-- Modern Chart Visualization Mockup -->
+<div class="h-64 flex items-end gap-3 pb-4">
+<div class="flex-1 bg-primary/10 rounded-t-sm h-[40%] transition-all hover:bg-primary/30"></div>
+<div class="flex-1 bg-primary/10 rounded-t-sm h-[60%] transition-all hover:bg-primary/30"></div>
+<div class="flex-1 bg-primary/20 rounded-t-sm h-[55%] transition-all hover:bg-primary/30"></div>
+<div class="flex-1 bg-primary/15 rounded-t-sm h-[80%] transition-all hover:bg-primary/30"></div>
+<div class="flex-1 bg-primary/40 rounded-t-sm h-[65%] transition-all hover:bg-primary/30"></div>
+<div class="flex-1 bg-primary h-[95%] rounded-t-sm transition-all hover:opacity-80"></div>
+<div class="flex-1 bg-primary/20 rounded-t-sm h-[70%] transition-all hover:bg-primary/30"></div>
+<div class="flex-1 bg-primary/10 rounded-t-sm h-[45%] transition-all hover:bg-primary/30"></div>
+</div>
+<div class="flex justify-between text-[10px] font-bold text-on-secondary-fixed-variant tracking-widest px-1">
+<span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span><span>SUN</span><span>MON</span>
+</div>
+</div>
+<!-- Live Preview Hub (Vertical) -->
+<div class="col-span-1 bg-surface-container-highest p-8 rounded-2xl flex flex-col justify-between">
+<div>
+<h3 class="text-xl font-bold text-on-surface mb-6">Live Preview Hub</h3>
+<div class="aspect-video rounded-lg overflow-hidden mb-6 relative group border border-outline-variant/20">
+<img class="w-full h-full object-cover" data-alt="clean digital interface displaying a high-fashion editorial layout on a tablet device" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEG-2560fj5Pk3z6N5NpVCZZx0NzDgIfBQbcylI2eoHGRWoRCJDZwSFvDU003SSRy27LiWQTdH8Rk4Z2rLyMmowo8WB-QF0Dy-4pFtcTxQhMSGmLr0-DxeR4rOinK-AI3YNK4K-1SHAFrwEG5jwdT5zJ5malAupNplJ8ns73TxsIxBM3uz0wEPNe7BGH7eUWSA3j3yMTcy4Vhm9Vifi9dX7mSrFS5dkCinsWp198VvradLdsBJJyR1ckOzHW0_StzQdDpSFtBrDsQL"/>
+<div class="absolute inset-0 bg-primary/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-4xl" data-icon="open_in_new">open_in_new</span>
+</div>
+</div>
+<p class="text-sm font-bold text-primary mb-2">Current Active Campaign:</p>
+<p class="text-on-surface-variant text-sm leading-relaxed italic">"Autumn Whispers: A Study in Minimalist Textiles"</p>
+</div>
+<button class="w-full mt-6 py-4 bg-gradient-to-br from-primary to-primary-container text-on-primary text-sm font-bold rounded-md shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all">
+                        Launch Designer Mode
+                    </button>
+</div>
+<!-- Recent Activity (Asymmetric Wide) -->
+<div class="col-span-3 grid grid-cols-12 gap-8 items-start">
+<div class="col-span-4 space-y-8">
+<div>
+<h3 class="text-3xl font-bold tracking-tighter text-on-surface">Recent<br/>Activity</h3>
+<div class="h-1 w-12 bg-primary mt-4"></div>
+</div>
+<p class="text-on-secondary-fixed-variant text-sm leading-relaxed">
+                            Monitoring global contributions and editorial changes across the Monolith platform.
+                        </p>
+</div>
+<div class="col-span-8 bg-surface-container-lowest rounded-2xl p-4 shadow-sm">
+<div class="space-y-2">
+<!-- Activity Item 1 -->
+<div class="flex items-center justify-between p-6 hover:bg-surface-container-low transition-colors rounded-xl group">
+<div class="flex items-center gap-6">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-surface-variant flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="portrait of a female creative director with soft focus background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDbawUW7tze7Tif14Ocp1CK8vdH1gcIQFPgAoLbhL5_PFYK_A2_QOxEARMTk1Q3g9IY717QBOHq3tKnC6k5AxqP6FVML0l-pmZNSE3Su11vwyUfJkwe46diJe0wRHRi9zKOI6phqH-HGMKHEhmhVqaPwIeAraEkXhNwTTu-LMW1RkzICWBATo66bkuzSadefvSJMP-VDS80VtBr8HIQhsiwAb4lS_spf3JjuW3wjzcqifFLDLzSqnaxjZLeKkleEng__xgMhup2PQH0"/>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Elena Vance <span class="font-normal text-on-surface-variant">published</span> "The Silk Route"</p>
+<p class="text-[10px] text-secondary-fixed-dim font-bold tracking-widest mt-1">2 MINUTES AGO • EDITORIAL</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Activity Item 2 -->
+<div class="flex items-center justify-between p-6 hover:bg-surface-container-low transition-colors rounded-xl group">
+<div class="flex items-center gap-6">
+<div class="w-12 h-12 rounded-full bg-primary-container/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="image">image</span>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface">New Asset Batch <span class="font-normal text-on-surface-variant">uploaded to</span> MediaManager</p>
+<p class="text-[10px] text-secondary-fixed-dim font-bold tracking-widest mt-1">1 HOUR AGO • SYSTEM</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Activity Item 3 -->
+<div class="flex items-center justify-between p-6 hover:bg-surface-container-low transition-colors rounded-xl group">
+<div class="flex items-center gap-6">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-surface-variant flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="portrait of a male system administrator in a high-tech environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGSzJ6r10lWgtSxZc6mTdp1I8pRcKjoofsaNnfQgDdhg_tIzoZ_uqZDM4adPPC4wN3hnkDjfYa7yNjKCGN-C58w7o_JYiELgIvB9EjmIOlx16nYPbBVWTeU8u1_VSHVC8ELzOHM7V3DIAleLO5ZdeSAE4FR9wI4diRk_9Xw4q-vPt-bHBzX55-bXtNComOWeFKR3M39htgkQxMDp7VW_sNn8bcn6YHz6fpLA6vORDz2wkjpkZL9ELmh55Aj3kpAM2lUiARvp0ms5au"/>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Marcus Thorne <span class="font-normal text-on-surface-variant">updated</span> User Permissions</p>
+<p class="text-[10px] text-secondary-fixed-dim font-bold tracking-widest mt-1">4 HOURS AGO • SECURITY</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Bottom Contextual Stats -->
+<footer class="pt-16 grid grid-cols-4 gap-12 border-t border-outline-variant/10">
+<div class="space-y-2">
+<p class="text-[10px] tracking-[0.2em] font-bold text-secondary-fixed-dim uppercase">Server Status</p>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-green-500"></div>
+<p class="text-sm font-bold text-on-surface">Optimized</p>
+</div>
+</div>
+<div class="space-y-2">
+<p class="text-[10px] tracking-[0.2em] font-bold text-secondary-fixed-dim uppercase">Active Users</p>
+<p class="text-xl font-bold text-on-surface">1,204 <span class="text-xs font-normal text-green-600">+12%</span></p>
+</div>
+<div class="space-y-2">
+<p class="text-[10px] tracking-[0.2em] font-bold text-secondary-fixed-dim uppercase">Content Score</p>
+<p class="text-xl font-bold text-on-surface">98/100</p>
+</div>
+<div class="space-y-2">
+<p class="text-[10px] tracking-[0.2em] font-bold text-secondary-fixed-dim uppercase">System Version</p>
+<p class="text-sm font-medium text-on-surface">v4.8.2-monolith</p>
+</div>
+</footer>
+</div>
+</main>
+</body></html>

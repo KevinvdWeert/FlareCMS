@@ -1,0 +1,24 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isStaff() {
+      return isAuthenticated() && (
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'editor'
+      );
+    }
+
+    match /pages/{pageId}/{allPaths=**} {
+      // Public can read all uploaded images inside pages (so they show up onpublished pages)
+      // Writing requires staff privileges
+      allow read: if true;
+      allow write: if isStaff();
+    }
+  }
+}
