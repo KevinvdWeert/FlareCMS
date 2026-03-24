@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchUsers, updateUserRole } from '../../lib/firestore';
 import { useAuth } from '../auth/useAuth';
+import { ShieldCheck } from 'lucide-react';
 
 export const UserList = () => {
   const [users, setUsers] = useState([]);
@@ -45,9 +46,18 @@ export const UserList = () => {
   };
 
   return (
-    <div className="admin-section">
-      <div className="admin-section-header">
-        <h1>User Management</h1>
+    <div className="admin-section editorial-user-list">
+      <div className="editorial-masthead">
+        <div>
+          <span className="editorial-kicker">System Integrity</span>
+          <h1>User <span>Ecosystem</span></h1>
+          <p>Manage editorial roles, protect publishing authority, and keep contributor access aligned.</p>
+        </div>
+        <div className="editorial-masthead-card">
+          <ShieldCheck size={28} />
+          <strong>{users.length}</strong>
+          <span>Active contributors</span>
+        </div>
       </div>
 
       {error && <div className="admin-editor-error">{error}</div>}
@@ -59,17 +69,23 @@ export const UserList = () => {
           <table className="admin-table">
             <thead>
               <tr>
-                <th>Email</th>
-                <th>Display Name</th>
-                <th>Role</th>
+                <th>Identity</th>
+                <th>Authority Role</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {users.map(u => (
                 <tr key={u.id}>
-                  <td>{u.email || 'N/A'}</td>
-                  <td>{u.displayName || 'No Name'}</td>
+                  <td>
+                    <div className="admin-identity-cell">
+                      <div className="admin-identity-avatar">{(u.displayName || u.email || 'U').charAt(0).toUpperCase()}</div>
+                      <div>
+                        <p className="admin-identity-name">{u.displayName || 'No Name'}</p>
+                        <p className="admin-identity-email">{u.email || 'N/A'}</p>
+                      </div>
+                    </div>
+                  </td>
                   <td>
                     <span className={`admin-badge ${u.role === 'admin' ? 'admin' : (u.role === 'editor' ? 'editor' : 'user')}`}>
                       {u.role || 'user'}

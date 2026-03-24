@@ -33,8 +33,8 @@ export const Login = () => {
   return (
     <div className="auth-shell">
       <div className="auth-card">
-      <h2>Admin Login</h2>
-      <p className="auth-subtitle">Welcome back. Sign in to manage content.</p>
+      <h2>FlareCMS Login</h2>
+      <p className="auth-subtitle">Sign in to access the FlareCMS workspace.</p>
       {error && <p className="auth-error">{error}</p>}
       <form onSubmit={handleLogin} className="auth-form">
         <input 
@@ -54,12 +54,10 @@ export const Login = () => {
           className="auth-input"
         />
         <button type="submit" className="auth-submit">
-          Login
+          Enter Workspace
         </button>
       </form>
-      <p className="auth-note">
-        For security, login is temporarily locked after repeated failures.
-      </p>
+      <p className="auth-note">Your permissions are synced from Firebase role policy.</p>
       <p className="auth-links">
         <Link to="/password-reset">Forgot password?</Link> · <Link to="/signup">Create account</Link>
       </p>

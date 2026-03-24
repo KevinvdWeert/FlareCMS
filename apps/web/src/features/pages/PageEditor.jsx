@@ -4,7 +4,7 @@ import { getPageById, createPage, updatePage, isSlugTaken } from '../../lib/fire
 import { uploadFeaturedImage, validateImageFile } from '../../lib/storage';
 import { useAuth } from '../auth/useAuth';
 import { BlockEditor } from '../blocks/BlockEditor';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Send } from 'lucide-react';
 import { validateSlug, validateTitle } from '../../lib/validation';
 
 export const PageEditor = () => {
@@ -135,43 +135,62 @@ export const PageEditor = () => {
     setSaving(false);
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <p className="admin-muted-text">Loading editor...</p>;
 
   return (
-    <div className="admin-editor-shell">
+    <div className="admin-editor-shell editorial-editor">
       <div className="admin-editor-topbar">
         <button onClick={() => navigate('/admin/pages')} className="admin-editor-back" type="button">
           <ArrowLeft size={18} />
-          <span>Back to Pages</span>
+          <span>ContentLibrary</span>
         </button>
-        <button
-          onClick={handleSave} 
-          disabled={saving}
-          className="admin-button-primary"
-          type="button"
-        >
-          <Save size={18} />
-          <span>{saving ? 'Saving...' : 'Save Page'}</span>
-        </button>
+        <div className="admin-editor-actions">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="admin-button-secondary"
+            type="button"
+          >
+            <Save size={16} />
+            <span>{saving ? 'Saving...' : 'Save Draft'}</span>
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="admin-button-primary"
+            type="button"
+          >
+            <Send size={16} />
+            <span>{status === 'published' ? 'Update Story' : 'Publish Story'}</span>
+          </button>
+        </div>
       </div>
 
       {error && <div className="admin-editor-error">{error}</div>}
       {saveSuccess && <div className="admin-editor-success">{saveSuccess}</div>}
 
-      <section className="admin-surface admin-editor-card">
-        <h2>Page Details</h2>
-        <div className="admin-editor-grid">
-          
+      <div className="admin-editor-workspace">
+        <section className="admin-surface admin-editor-card admin-editor-main">
           <label className="admin-editor-field admin-editor-field-full">
-            <strong>Title</strong>
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="admin-editor-input" />
+            <span className="editorial-kicker">Feature Article</span>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="admin-editor-title-input"
+              placeholder="Enter title..."
+            />
           </label>
 
-          <label className="admin-editor-field">
-            <strong>Slug</strong>
-            <input type="text" value={slug} onChange={(e) => setSlug(e.target.value)} className="admin-editor-input" />
-          </label>
+          <div className="admin-editor-blocks-wrap">
+            <h2>Content Body</h2>
+            <p className="admin-muted-text">Compose your article with modular content blocks.</p>
+            <BlockEditor blocks={blocks} setBlocks={setBlocks} pageId={id} />
+          </div>
+        </section>
 
+        <aside className="admin-surface admin-editor-card admin-editor-sidebar-panel">
+          <h2>Status &amp; Visibility</h2>
           <label className="admin-editor-field">
             <strong>Status</strong>
             <select value={status} onChange={(e) => setStatus(e.target.value)} className="admin-editor-input">
@@ -180,11 +199,16 @@ export const PageEditor = () => {
             </select>
           </label>
 
+          <label className="admin-editor-field">
+            <strong>Slug</strong>
+            <input type="text" value={slug} onChange={(e) => setSlug(e.target.value)} className="admin-editor-input" />
+          </label>
+
           <div className="admin-editor-upload admin-editor-field-full">
-            <strong>Featured Image</strong>
+            <strong>Cover Image</strong>
             {featuredImage && (
               <div className="admin-editor-current-image">
-                <p>Current: {featuredImage.alt}</p>
+                <p>{featuredImage.alt || featuredImage.storagePath}</p>
                 <button onClick={() => setFeaturedImage(null)} className="admin-editor-remove" type="button">Remove</button>
               </div>
             )}
@@ -193,15 +217,8 @@ export const PageEditor = () => {
               {!id && <p className="admin-editor-hint-danger">Save page first to upload image.</p>}
             </div>
           </div>
-
-        </div>
-      </section>
-
-      <section className="admin-surface admin-editor-card">
-        <h2>Content Blocks</h2>
-        <p className="admin-muted-text" style={{ marginBottom: '14px' }}>Add and arrange blocks to build the page content.</p>
-        <BlockEditor blocks={blocks} setBlocks={setBlocks} pageId={id} />
-      </section>
+        </aside>
+      </div>
 
     </div>
   );

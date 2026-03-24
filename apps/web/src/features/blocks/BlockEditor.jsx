@@ -48,6 +48,9 @@ export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
 
   const handleImageUpload = async (index, file) => {
     setUploadError('');
+    if (!file) {
+      return;
+    }
     if (!pageId) {
       setUploadError('Please save the page first before uploading images to blocks.');
       return;
@@ -69,13 +72,13 @@ export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
     <div className="block-editor">
       <div className="block-toolbar">
         <button onClick={() => addBlock('heading')} className="block-toolbar-btn" type="button">
-          <Heading1 size={16} /> Add Heading
+          <Heading1 size={16} /> Heading
         </button>
         <button onClick={() => addBlock('paragraph')} className="block-toolbar-btn" type="button">
-          <Type size={16} /> Add Paragraph
+          <Type size={16} /> Paragraph
         </button>
         <button onClick={() => addBlock('image')} className="block-toolbar-btn" type="button">
-          <ImageIcon size={16} /> Add Image
+          <ImageIcon size={16} /> Image
         </button>
       </div>
 
@@ -94,7 +97,7 @@ export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
             </div>
 
             <div className="block-type-label">
-              {block.type}
+              {block.type === 'heading' ? 'Heading Block' : block.type === 'paragraph' ? 'Paragraph Block' : 'Image Block'}
             </div>
 
             {block.type === 'heading' && (
@@ -129,11 +132,11 @@ export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
               <div className="block-form-column">
                 {block.storagePath ? (
                   <div className="block-image-meta">
-                    Image Path: {block.storagePath} <br/>
-                    Alt: {block.alt}
+                    <p><strong>Image Path:</strong> {block.storagePath}</p>
+                    <p><strong>Alt:</strong> {block.alt}</p>
                   </div>
                 ) : (
-                  <input type="file" accept="image/*" onChange={(e) => handleImageUpload(index, e.target.files[0])} />
+                  <input className="block-input block-input-grow" type="file" accept="image/*" onChange={(e) => handleImageUpload(index, e.target.files?.[0])} />
                 )}
                 <input 
                   type="text" 

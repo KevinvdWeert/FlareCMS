@@ -11,6 +11,12 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 const AdminLayout = lazy(() =>
   import('../features/admin/AdminLayout').then((module) => ({ default: module.AdminLayout }))
 );
+const Dashboard = lazy(() =>
+  import('../features/dashboard/Dashboard').then((module) => ({ default: module.Dashboard }))
+);
+const MediaManager = lazy(() =>
+  import('../features/media/MediaManager').then((module) => ({ default: module.MediaManager }))
+);
 const PageList = lazy(() =>
   import('../features/pages/PageList').then((module) => ({ default: module.PageList }))
 );
@@ -47,7 +53,15 @@ function App() {
                   </Suspense>
                 }
               >
-                <Route path="/admin" element={<Navigate to="/admin/pages" replace />} />
+                <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+                <Route
+                  path="/admin/dashboard"
+                  element={
+                    <Suspense fallback={<LoadingSpinner label="Loading dashboard..." />}>
+                      <Dashboard />
+                    </Suspense>
+                  }
+                />
                 <Route
                   path="/admin/pages"
                   element={
@@ -69,6 +83,14 @@ function App() {
                   element={
                     <Suspense fallback={<LoadingSpinner label="Loading editor..." />}>
                       <PageEditor />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/admin/media"
+                  element={
+                    <Suspense fallback={<LoadingSpinner label="Loading media..." />}>
+                      <MediaManager />
                     </Suspense>
                   }
                 />

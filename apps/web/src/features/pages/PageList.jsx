@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getPagesPaginated, deletePage } from '../../lib/firestore';
 import { Link } from 'react-router-dom';
-import { Edit, Trash, Plus } from 'lucide-react';
+import { Edit, Trash, Plus, FileStack } from 'lucide-react';
 
 export const PageList = () => {
   const [pages, setPages] = useState([]);
@@ -48,9 +48,21 @@ export const PageList = () => {
   };
 
   return (
-    <div className="admin-section">
+    <div className="admin-section editorial-page-list">
+      <div className="editorial-masthead">
+        <div>
+          <span className="editorial-kicker">Archive 2024</span>
+          <h1>Content <span>Library</span></h1>
+          <p>Curate and publish your editorial pages with premium control and a clear publishing rhythm.</p>
+        </div>
+        <div className="editorial-masthead-card">
+          <FileStack size={28} />
+          <strong>{pages.length}</strong>
+          <span>Loaded entries</span>
+        </div>
+      </div>
+
       <div className="admin-section-header">
-        <h1>Pages</h1>
         <Link to="/admin/pages/new" className="admin-button-primary">
           <Plus size={18} />
           <span>Create Page</span>
@@ -79,7 +91,7 @@ export const PageList = () => {
                 <td className="admin-cell-muted">/{page.slug}</td>
                 <td>
                   <span className={`admin-badge ${page.status === 'published' ? 'published' : 'draft'}`}>
-                    {page.status}
+                    {page.status === 'published' ? 'Published' : 'Draft'}
                   </span>
                 </td>
                 <td className="align-right">
