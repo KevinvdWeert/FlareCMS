@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { fetchUsers, updateUserRole } from '../../lib/firestore';
+import { fetchUsers } from '../../lib/firestore';
+import { callSetUserRole } from '../../lib/functions';
 import { useAuth } from '../auth/useAuth';
 import { ShieldCheck } from 'lucide-react';
 
@@ -34,12 +35,13 @@ export const UserList = () => {
     setError('');
     try {
       setUpdatingUid(uid);
-      await updateUserRole(uid, newRole);
+      // Use the Cloud Function which enforces last-admin guard and syncs custom claims
+      await callSetUserRole(uid, newRole);
       // Update local state
       setUsers((prev) => prev.map((u) => (u.id === uid ? { ...u, role: newRole } : u)));
     } catch (err) {
       console.error(err);
-      setError('Failed to update role. Make sure you are an admin.');
+      setError(err?.message || 'Failed to update role. Make sure you are an admin.');
     } finally {
       setUpdatingUid('');
     }

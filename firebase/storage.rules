@@ -2,7 +2,7 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    
+
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -24,6 +24,14 @@ service firebase.storage {
         firestore.get(/databases/(default)/documents/pages/$(pageId)).data.createdBy == request.auth.uid;
     }
 
+    function isAssetOwner(assetId) {
+      return isAuthenticated() &&
+        firestore.get(/databases/(default)/documents/mediaAssets/$(assetId)).data.ownerId == request.auth.uid;
+    }
+
+    // ---------------------------------------------------------------------------
+    // Page-scoped images (featured images and block images)
+    // ---------------------------------------------------------------------------
     match /pages/{pageId}/{allPaths=**} {
       // Public can read images so they render on published pages
       allow read: if true;
@@ -31,6 +39,24 @@ service firebase.storage {
       allow write: if (isPageAuthor(pageId) || isAdmin())
         && request.resource.size <= 5 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
+    }
+
+    // ---------------------------------------------------------------------------
+    // Media manager uploads (organized by uploader UID)
+    // ---------------------------------------------------------------------------
+    match /media/{uid}/{fileName} {
+      // Staff can read any asset; public access is via signed URLs or page embeds
+      allow read: if isStaff() || request.auth.uid == uid;
+      // Only the owning user or an admin may upload; enforce 10 MB size and image types
+      // Note: MAX_ASSET_BYTES (10 MB) is also defined in functions/src/lib/validation.ts
+      allow create: if (request.auth.uid == uid || isAdmin())
+        && isStaff()
+        && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      // Only the owning user or an admin may delete
+      allow delete: if (request.auth.uid == uid || isAdmin()) && isStaff();
+      // No in-place updates; replace = delete + create
+      allow update: if false;
     }
   }
 }
