@@ -3,7 +3,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ---------------------------------------------------------------------------
     // Helper functions
+    // ---------------------------------------------------------------------------
+
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -30,9 +33,11 @@ service cloud.firestore {
       return isAdmin() || isEditor();
     }
 
+    // ---------------------------------------------------------------------------
     // Pages Collection
+    // ---------------------------------------------------------------------------
     match /pages/{pageId} {
-      // Anyone can read published pages
+      // Anyone can read published pages; staff can read all
       allow read: if resource.data.status == 'published' || isStaff();
       // Any staff can create a new page
       allow create: if isStaff();
@@ -41,15 +46,18 @@ service cloud.firestore {
       allow delete: if isStaff() && (resource.data.createdBy == request.auth.uid || isAdmin());
     }
 
+    // ---------------------------------------------------------------------------
     // Users Collection
+    // ---------------------------------------------------------------------------
     match /users/{userId} {
       // Users can always read their own profile document.
       allow read: if isAuthenticated() && request.auth.uid == userId;
 
       // Admins can read all user documents.
       allow read: if isAdmin();
-      
-      // Users can create/update their own non-role fields without elevating permissions
+
+      // Users can create/update their own non-role fields without elevating permissions.
+      // Cloud Functions (admin SDK) bypass rules entirely for role changes.
       allow create: if isAdmin() || (
         isAuthenticated()
         && request.auth.uid == userId
@@ -64,6 +72,48 @@ service cloud.firestore {
 
       // Admins can delete user docs
       allow delete: if isAdmin();
+    }
+
+    // ---------------------------------------------------------------------------
+    // Media Assets Collection
+    // ---------------------------------------------------------------------------
+    match /mediaAssets/{assetId} {
+      // Staff can read all assets
+      allow read: if isStaff();
+      // Assets are registered through Cloud Functions (admin SDK bypasses rules).
+      // Allow direct client creation/update by asset owner or admin.
+      allow create: if isStaff();
+      allow update: if isStaff() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow delete: if isStaff() && (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+
+    // ---------------------------------------------------------------------------
+    // Activity Log Collection (append-only from Cloud Functions)
+    // ---------------------------------------------------------------------------
+    match /activityLog/{entryId} {
+      // Staff can read the activity log
+      allow read: if isStaff();
+      // Writes only from Cloud Functions (admin SDK) — deny all client writes
+      allow write: if false;
+    }
+
+    // ---------------------------------------------------------------------------
+    // Invites Collection
+    // ---------------------------------------------------------------------------
+    match /invites/{inviteId} {
+      // Admins can read all invites
+      allow read: if isAdmin();
+      // Invite creation and acceptance handled by Cloud Functions
+      allow write: if false;
+    }
+
+    // ---------------------------------------------------------------------------
+    // Settings Collection (system config)
+    // ---------------------------------------------------------------------------
+    match /settings/{settingId} {
+      // Admins can read and write settings
+      allow read: if isAdmin();
+      allow write: if isAdmin();
     }
   }
 }
