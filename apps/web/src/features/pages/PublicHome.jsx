@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getPages } from '../../lib/firestore';
 import { Link } from 'react-router-dom';
+import { useImageUrl } from '../../hooks/useImageUrl';
 
 export const PublicHome = () => {
   const [pages, setPages] = useState([]);
@@ -93,13 +94,10 @@ export const PublicHome = () => {
 };
 
 // Helper for card images to avoid breaking the layout while loading
-import { getImageUrl } from '../../lib/storage';
 const RenderedCardImage = ({ storagePath, alt }) => {
-  const [url, setUrl] = useState(null);
-  useEffect(() => {
-    getImageUrl(storagePath).then(setUrl).catch(console.error);
-  }, [storagePath]);
+  const { url, error } = useImageUrl(storagePath);
 
+  if (error) return <div className="card-image placeholder-image"><span className="placeholder-icon">🖼️</span></div>;
   if (!url) return <div className="card-image loading-image"></div>;
   return <img src={url} alt={alt} />;
 };

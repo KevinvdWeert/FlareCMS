@@ -107,6 +107,19 @@ export const getPageBySlug = async (slug) => {
   return null;
 };
 
+/**
+ * Checks whether a slug is already used by another page.
+ * @param {string} slug
+ * @param {string|null} excludeId - page ID to exclude (for edit mode)
+ * @returns {Promise<boolean>}
+ */
+export const isSlugTaken = async (slug, excludeId = null) => {
+  const pagesRef = collection(db, 'pages');
+  const q = query(pagesRef, where('slug', '==', slug));
+  const snap = await getDocs(q);
+  return snap.docs.some((d) => d.id !== excludeId);
+};
+
 export const createPage = async (pageData, uid) => {
   const pagesRef = collection(db, 'pages');
   const newDocRef = doc(pagesRef);

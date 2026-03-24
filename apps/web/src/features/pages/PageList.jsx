@@ -9,6 +9,7 @@ export const PageList = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [cursor, setCursor] = useState(null);
   const [hasMorePages, setHasMorePages] = useState(false);
+  const [error, setError] = useState('');
   const PAGE_SIZE = 10;
 
   const fetchPageChunk = async ({ next = false } = {}) => {
@@ -17,6 +18,7 @@ export const PageList = () => {
     } else {
       setLoading(true);
     }
+    setError('');
     try {
       const data = await getPagesPaginated({
         pageSize: PAGE_SIZE,
@@ -27,7 +29,7 @@ export const PageList = () => {
       setHasMorePages(data.hasMore);
     } catch (err) {
       console.error("Error fetching pages:", err);
-      alert("Failed to load pages. Check Firestore permissions.");
+      setError("Failed to load pages. Check Firestore permissions.");
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -54,6 +56,8 @@ export const PageList = () => {
           <span>Create Page</span>
         </Link>
       </div>
+
+      {error && <div className="admin-editor-error">{error}</div>}
 
       {loading ? (
         <p className="admin-muted-text">Loading pages...</p>

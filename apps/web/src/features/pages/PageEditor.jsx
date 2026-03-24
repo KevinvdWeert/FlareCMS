@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getPageById, createPage, updatePage } from '../../lib/firestore';
-import { uploadFeaturedImage } from '../../lib/storage';
+import { getPageById, createPage, updatePage, isSlugTaken } from '../../lib/firestore';
+import { uploadFeaturedImage, validateImageFile } from '../../lib/storage';
 import { useAuth } from '../auth/useAuth';
 import { BlockEditor } from '../blocks/BlockEditor';
 import { ArrowLeft, Save } from 'lucide-react';
@@ -47,7 +47,7 @@ export const PageEditor = () => {
     if (!id && title && !slug) {
       setSlug(title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''));
     }
-  }, [title, id]);
+  }, [title, id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleFeaturedImageUpload = async (e) => {
     const file = e.target.files[0];
@@ -57,25 +57,35 @@ export const PageEditor = () => {
     // In a real app we might create a draft document first or use a temp ID.
     // For simplicity, we require saving the draft first if it's new.
     if (!id) {
-      alert('Please save the page as draft first before uploading an image.');
+      setError('Please save the page as draft first before uploading an image.');
       return;
     }
-    
+
+    try {
+      validateImageFile(file);
+    } catch (err) {
+      setError(err.message);
+      return;
+    }
+
     try {
       setSaving(true);
       const imageData = await uploadFeaturedImage(id, file);
       setFeaturedImage(imageData);
-      setSaving(false);
     } catch (err) {
       console.error(err);
-      alert('Upload failed');
+      setError(err.message || 'Upload failed.');
+    } finally {
       setSaving(false);
     }
   };
 
+  const [saveSuccess, setSaveSuccess] = useState('');
+
   const handleSave = async (e) => {
     e.preventDefault();
     setError('');
+    setSaveSuccess('');
     
     if (!title || !slug) {
       setError('Title and slug are required.');
@@ -91,6 +101,17 @@ export const PageEditor = () => {
     }
 
     setSaving(true);
+    try {
+      const taken = await isSlugTaken(slug, id || null);
+      if (taken) {
+        setError('This slug is already used by another page. Please choose a different slug.');
+        setSaving(false);
+        return;
+      }
+    } catch (err) {
+      console.error('Slug validation error:', err);
+    }
+
     const pageData = {
       title,
       slug,
@@ -102,11 +123,11 @@ export const PageEditor = () => {
     try {
       if (id) {
         await updatePage(id, pageData, user.uid);
-        alert('Page updated successfully!');
+        setSaveSuccess('Page updated successfully!');
       } else {
         const newId = await createPage(pageData, user.uid);
         navigate(`/admin/pages/${newId}`, { replace: true });
-        alert('Page created successfully!');
+        setSaveSuccess('Page created successfully!');
       }
     } catch (err) {
       setError(err.message);
@@ -135,6 +156,7 @@ export const PageEditor = () => {
       </div>
 
       {error && <div className="admin-editor-error">{error}</div>}
+      {saveSuccess && <div className="admin-editor-success">{saveSuccess}</div>}
 
       <section className="admin-surface admin-editor-card">
         <h2>Page Details</h2>

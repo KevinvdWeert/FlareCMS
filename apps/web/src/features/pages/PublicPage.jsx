@@ -2,20 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getPageBySlug } from '../../lib/firestore';
 import { BlockRenderer } from '../blocks/BlockRenderer';
-import { getImageUrl } from '../../lib/storage';
+import { useImageUrl } from '../../hooks/useImageUrl';
 
 export const PublicPage = () => {
   const { slug } = useParams();
   const [page, setPage] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [heroUrl, setHeroUrl] = useState(null);
   const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     const fetchPageContent = async () => {
       setLoading(true);
       setLoadError('');
-      setHeroUrl(null);
       try {
         const data = await Promise.race([
           getPageBySlug(slug),
@@ -24,14 +22,6 @@ export const PublicPage = () => {
           )
         ]);
         setPage(data);
-        if (data?.featuredImage?.storagePath) {
-          try {
-            const url = await getImageUrl(data.featuredImage.storagePath);
-            setHeroUrl(url);
-          } catch (e) {
-            console.error('Failed to load featured image', e);
-          }
-        }
       } catch (error) {
         console.error('Failed to load page:', error);
         setPage(null);
@@ -42,6 +32,9 @@ export const PublicPage = () => {
     };
     fetchPageContent();
   }, [slug]);
+
+  const heroStoragePath = page?.featuredImage?.storagePath || null;
+  const { url: heroUrl } = useImageUrl(heroStoragePath);
 
   if (loading) {
     return (
@@ -82,7 +75,9 @@ export const PublicPage = () => {
           <header className="article-title-section">
             <h1 className="article-title">{page.title}</h1>
             <div className="article-meta">
-              Published on {page.publishedAt ? new Date(page.publishedAt.toMillis()).toLocaleDateString() : new Date(page.createdAt.toMillis()).toLocaleDateString()}
+              Published on {new Date(
+                page?.publishedAt?.toMillis?.() ?? page?.createdAt?.toMillis?.() ?? Date.now()
+              ).toLocaleDateString()}
             </div>
           </header>
           

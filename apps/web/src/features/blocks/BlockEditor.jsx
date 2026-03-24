@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { uploadBlockImage } from '../../lib/storage';
+import { uploadBlockImage, validateImageFile } from '../../lib/storage';
 import { Type, Image as ImageIcon, Heading1, Trash, ArrowUp, ArrowDown } from 'lucide-react';
 
 export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
+  const [uploadError, setUploadError] = useState('');
 
   const addBlock = (type) => {
     const newBlock = { id: uuidv4(), type };
@@ -46,11 +47,13 @@ export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
   };
 
   const handleImageUpload = async (index, file) => {
+    setUploadError('');
     if (!pageId) {
-      alert("Please save the page first before uploading images to blocks.");
+      setUploadError('Please save the page first before uploading images to blocks.');
       return;
     }
     try {
+      validateImageFile(file);
       const imageData = await uploadBlockImage(pageId, file);
       const newBlocks = [...blocks];
       newBlocks[index].storagePath = imageData.storagePath;
@@ -58,7 +61,7 @@ export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
       setBlocks(newBlocks);
     } catch (err) {
       console.error(err);
-      alert("Image upload failed");
+      setUploadError(err.message || 'Image upload failed.');
     }
   };
 
@@ -75,6 +78,10 @@ export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
           <ImageIcon size={16} /> Add Image
         </button>
       </div>
+
+      {uploadError && (
+        <div className="admin-editor-error" style={{ marginBottom: '10px' }}>{uploadError}</div>
+      )}
 
       <div className="block-list">
         {blocks.map((block, index) => (
