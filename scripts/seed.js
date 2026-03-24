@@ -16,6 +16,7 @@ const { initializeApp, cert, getApps } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
 const { v4: uuidv4 } = require('uuid');
+const net = require('net');
 
 const IS_PRODUCTION = process.argv.includes('--production');
 
@@ -37,6 +38,43 @@ if (!getApps().length) {
 const db = getFirestore();
 const auth = getAuth();
 
+function checkPortOpen(host, port, timeoutMs = 1500) {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    let done = false;
+
+    const finish = (ok) => {
+      if (!done) {
+        done = true;
+        socket.destroy();
+        resolve(ok);
+      }
+    };
+
+    socket.setTimeout(timeoutMs);
+    socket.once('connect', () => finish(true));
+    socket.once('timeout', () => finish(false));
+    socket.once('error', () => finish(false));
+    socket.connect(port, host);
+  });
+}
+
+async function assertEmulatorsRunning() {
+  const authUp = await checkPortOpen('127.0.0.1', 9099);
+  const firestoreUp = await checkPortOpen('127.0.0.1', 8080);
+
+  if (!authUp || !firestoreUp) {
+    const missing = [
+      !authUp ? 'Auth emulator (9099)' : null,
+      !firestoreUp ? 'Firestore emulator (8080)' : null,
+    ].filter(Boolean).join(', ');
+
+    throw new Error(
+      `Local emulators are not running: ${missing}. Start them first with \`npm run emulators\`.`
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Seed data definitions
 // ---------------------------------------------------------------------------
@@ -46,21 +84,21 @@ const SEED_USERS = [
     uid: 'seed-admin-001',
     email: 'admin@flarecms.dev',
     password: 'Admin1234!',
-    displayName: 'Alice Admin',
+    fullName: 'Alice Admin',
     role: 'admin',
   },
   {
     uid: 'seed-editor-001',
     email: 'editor@flarecms.dev',
     password: 'Editor1234!',
-    displayName: 'Bob Editor',
+    fullName: 'Bob Editor',
     role: 'editor',
   },
   {
     uid: 'seed-user-001',
     email: 'user@flarecms.dev',
     password: 'User1234!',
-    displayName: 'Carol User',
+    fullName: 'Carol User',
     role: 'user',
   },
 ];
@@ -140,7 +178,7 @@ async function seedUsers() {
           uid: u.uid,
           email: u.email,
           password: u.password,
-          displayName: u.displayName,
+          displayName: u.fullName,
         });
         console.log(`  ✅ Auth user created: ${u.email}`);
       } catch (err) {
@@ -161,7 +199,8 @@ async function seedUsers() {
         .set(
           {
             email: u.email,
-            displayName: u.displayName,
+            fullName: u.fullName,
+            displayName: u.fullName,
             role: u.role,
             createdAt: FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp(),
@@ -233,6 +272,8 @@ async function main() {
   if (IS_PRODUCTION) {
     console.warn('⚠️  WARNING: Running against PRODUCTION. Ctrl+C to abort.');
     await new Promise((r) => setTimeout(r, 3000));
+  } else {
+    await assertEmulatorsRunning();
   }
 
   await seedUsers();

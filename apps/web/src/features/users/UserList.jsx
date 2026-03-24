@@ -81,9 +81,9 @@ export const UserList = () => {
                 <tr key={u.id}>
                   <td>
                     <div className="admin-identity-cell">
-                      <div className="admin-identity-avatar">{(u.displayName || u.email || 'U').charAt(0).toUpperCase()}</div>
+                      <div className="admin-identity-avatar">{(u.fullName || u.displayName || u.email || 'U').charAt(0).toUpperCase()}</div>
                       <div>
-                        <p className="admin-identity-name">{u.displayName || 'No Name'}</p>
+                        <p className="admin-identity-name">{u.fullName || u.displayName || 'No Name'}</p>
                         <p className="admin-identity-email">{u.email || 'N/A'}</p>
                       </div>
                     </div>

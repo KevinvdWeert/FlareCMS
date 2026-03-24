@@ -9,6 +9,7 @@
     "emulators:import": "firebase emulators:start --import ./emulator-data",
     "seed": "node scripts/seed.js",
     "seed:production": "node scripts/seed.js --production",
+    "inject:users": "node scripts/inject_prod_users.js",
     "functions:build": "cd functions && npm run build",
     "functions:watch": "cd functions && npm run watch",
     "web:dev": "cd apps/web && npm run dev",
@@ -19,8 +20,11 @@
     "deploy:hosting": "npm run web:build && firebase deploy --only hosting",
     "deploy": "npm run functions:build && npm run web:build && firebase deploy"
   },
-  "devDependencies": {
+  "dependencies": {
     "firebase-admin": "^12.0.0",
     "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "firebase-tools": "^13.29.3"
   }
 }

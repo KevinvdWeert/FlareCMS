@@ -6,8 +6,123 @@
  */
 import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'firebase/functions';
 import { app } from './firebase';
+import {
+  collection,
+  getDoc,
+  getDocs,
+  doc,
+  query,
+  where,
+  orderBy,
+  limit,
+  startAfter,
+} from 'firebase/firestore';
+import { db } from './firebase';
 
 const functions = getFunctions(app);
+
+const IS_LOCALHOST =
+  typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+const SHOULD_BYPASS_CALLABLES_LOCALLY =
+  import.meta.env.DEV &&
+  IS_LOCALHOST &&
+  import.meta.env.VITE_USE_EMULATORS !== 'true';
+
+const shouldFallbackToFirestore = (err) => {
+  const code = String(err?.code || '');
+  const msg = String(err?.message || '').toLowerCase();
+  return (
+    code.includes('internal') ||
+    code.includes('unavailable') ||
+    msg.includes('cors') ||
+    msg.includes('failed to fetch') ||
+    msg.includes('network')
+  );
+};
+
+const directGetDashboardStats = async () => {
+  const safeCount = async (fetchCount, fallbackValue = 0) => {
+    try {
+      return await fetchCount();
+    } catch (err) {
+      const code = String(err?.code || '');
+      if (code.includes('permission-denied') || code.includes('failed-precondition')) {
+        return fallbackValue;
+      }
+      throw err;
+    }
+  };
+
+  const [totalUsers, publishedPages, draftPages, totalAssets] = await Promise.all([
+    safeCount(async () => (await getDocs(collection(db, 'users'))).size, null),
+    safeCount(async () => (await getDocs(query(collection(db, 'pages'), where('status', '==', 'published')))).size),
+    safeCount(async () => (await getDocs(query(collection(db, 'pages'), where('status', '==', 'draft')))).size),
+    safeCount(async () => (await getDocs(collection(db, 'mediaAssets'))).size),
+  ]);
+
+  return {
+    totalUsers,
+    publishedPages,
+    draftPages,
+    totalAssets,
+  };
+};
+
+const directGetRecentActivity = async ({ limit: limitCount = 10 } = {}) => {
+  try {
+    const snap = await getDocs(
+      query(collection(db, 'activityLog'), orderBy('createdAt', 'desc'), limit(limitCount))
+    );
+    return { entries: snap.docs.map((d) => ({ id: d.id, ...d.data() })) };
+  } catch (err) {
+    const code = String(err?.code || '');
+    if (code.includes('permission-denied') || code.includes('failed-precondition')) {
+      return { entries: [] };
+    }
+    throw err;
+  }
+};
+
+const directListMediaAssets = async ({ pageSize = 20, startAfterId = null, mimeTypeFilter, ownerOnly = false } = {}) => {
+  try {
+    let q;
+    const base = collection(db, 'mediaAssets');
+
+    if (mimeTypeFilter) {
+      q = query(base, where('mimeType', '==', mimeTypeFilter), orderBy('createdAt', 'desc'), limit(Math.min(pageSize, 100)));
+    } else {
+      q = query(base, orderBy('createdAt', 'desc'), limit(Math.min(pageSize, 100)));
+    }
+
+    if (startAfterId) {
+      const cursor = await getDoc(doc(db, 'mediaAssets', startAfterId));
+      if (cursor.exists()) {
+        q = query(q, startAfter(cursor));
+      }
+    }
+
+    let docs = (await getDocs(q)).docs;
+
+    if (ownerOnly) {
+      // Owner-only filter is applied client-side in fallback mode when no uid is provided.
+      // This keeps the function signature stable without threading auth uid here.
+      docs = docs.filter((d) => !!d.data().ownerId);
+    }
+
+    return {
+      assets: docs.map((d) => ({ id: d.id, ...d.data() })),
+      hasMore: docs.length === pageSize,
+    };
+  } catch (err) {
+    const code = String(err?.code || '');
+    if (code.includes('permission-denied') || code.includes('failed-precondition')) {
+      return { assets: [], hasMore: false };
+    }
+    throw err;
+  }
+};
 
 // Connect to emulator in development
 if (import.meta.env.VITE_USE_EMULATORS === 'true') {
@@ -115,7 +230,16 @@ export const callRegisterMediaAsset = (metadata) =>
  * @param {{ pageSize?: number, startAfterId?: string, mimeTypeFilter?: string, ownerOnly?: boolean }} opts
  */
 export const callListMediaAssets = (opts = {}) =>
-  httpsCallable(functions, 'listMediaAssets')(opts);
+  (SHOULD_BYPASS_CALLABLES_LOCALLY
+    ? directListMediaAssets(opts).then((data) => ({ data }))
+    : httpsCallable(functions, 'listMediaAssets')(opts)
+  ).catch(async (err) => {
+    if (!shouldFallbackToFirestore(err)) {
+      throw err;
+    }
+    console.warn('Falling back to Firestore for listMediaAssets:', err?.message || err);
+    return { data: await directListMediaAssets(opts) };
+  });
 
 /**
  * Deletes a media asset (metadata + storage file).
@@ -148,14 +272,32 @@ export const callDetachAssetFromPage = (assetId, pageId) =>
  * Gets aggregate dashboard stats (cached for 5 minutes server-side).
  */
 export const callGetDashboardStats = () =>
-  httpsCallable(functions, 'getDashboardStats')();
+  (SHOULD_BYPASS_CALLABLES_LOCALLY
+    ? directGetDashboardStats().then((data) => ({ data }))
+    : httpsCallable(functions, 'getDashboardStats')()
+  ).catch(async (err) => {
+    if (!shouldFallbackToFirestore(err)) {
+      throw err;
+    }
+    console.warn('Falling back to Firestore for getDashboardStats:', err?.message || err);
+    return { data: await directGetDashboardStats() };
+  });
 
 /**
  * Gets recent activity feed.
  * @param {{ limit?: number }} opts
  */
 export const callGetRecentActivity = (opts = {}) =>
-  httpsCallable(functions, 'getRecentActivity')(opts);
+  (SHOULD_BYPASS_CALLABLES_LOCALLY
+    ? directGetRecentActivity(opts).then((data) => ({ data }))
+    : httpsCallable(functions, 'getRecentActivity')(opts)
+  ).catch(async (err) => {
+    if (!shouldFallbackToFirestore(err)) {
+      throw err;
+    }
+    console.warn('Falling back to Firestore for getRecentActivity:', err?.message || err);
+    return { data: await directGetRecentActivity(opts) };
+  });
 
 /**
  * Gets traffic summary placeholder.

@@ -25,6 +25,7 @@ export const onUserCreated = functions.auth.user().onCreate(async (user) => {
 
     await userRef.set({
       email: user.email || null,
+      fullName: user.displayName || null,
       displayName: user.displayName || null,
       photoURL: user.photoURL || null,
       role: "user",

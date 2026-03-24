@@ -15,10 +15,13 @@ const LOGIN_FAILURE_KEY = 'flarecms-login-failures';
 // 15-minute lock window after MAX_LOGIN_ATTEMPTS failed logins.
 const LOGIN_LOCK_WINDOW_MS = 15 * 60 * 1000;
 const MAX_LOGIN_ATTEMPTS = 5;
+const IS_EMULATOR_MODE = import.meta.env.VITE_USE_EMULATORS === 'true';
+const IS_DEV_MODE = import.meta.env.DEV;
+const IS_LOGIN_LOCK_ENABLED = !IS_EMULATOR_MODE && !IS_DEV_MODE;
 
 export const loginFirebase = async (email, password) => {
   const normalizedEmail = normalizeEmail(email);
-  if (typeof window !== 'undefined') {
+  if (IS_LOGIN_LOCK_ENABLED && typeof window !== 'undefined') {
     const raw = localStorage.getItem(LOGIN_FAILURE_KEY);
     if (raw) {
       const data = JSON.parse(raw);
@@ -39,7 +42,7 @@ export const loginFirebase = async (email, password) => {
     }
     return response;
   } catch (err) {
-    if (typeof window !== 'undefined') {
+    if (IS_LOGIN_LOCK_ENABLED && typeof window !== 'undefined') {
       const raw = localStorage.getItem(LOGIN_FAILURE_KEY);
       const data = raw ? JSON.parse(raw) : { count: 0, email: normalizedEmail };
       const isSameEmail = data.email === normalizedEmail;
@@ -65,10 +68,12 @@ export const observeAuthState = (callback) => {
 export const signupFirebase = async (email, password, displayName) => {
   const normalizedEmail = normalizeEmail(email);
   const credentials = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
-  await updateProfile(credentials.user, { displayName });
+  const trimmedName = displayName.trim();
+  await updateProfile(credentials.user, { displayName: trimmedName });
   await setDoc(doc(db, 'users', credentials.user.uid), {
     email: normalizedEmail,
-    displayName: displayName.trim(),
+    fullName: trimmedName,
+    displayName: trimmedName,
     role: 'user',
     createdAt: serverTimestamp()
   }, { merge: true });

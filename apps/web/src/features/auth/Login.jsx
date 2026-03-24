@@ -26,7 +26,11 @@ export const Login = () => {
       await loginFirebase(email, password);
       navigate('/admin');
     } catch (err) {
-      setError(err.message);
+      if (err?.code === 'auth/invalid-credential') {
+        setError('Invalid email/password for this Firebase project. If you expected demo users, run emulators + seed first.');
+      } else {
+        setError(err.message || 'Login failed. Please try again.');
+      }
     }
   };
 

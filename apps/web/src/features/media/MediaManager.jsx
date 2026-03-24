@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { CloudUpload, Filter, Grid3X3, List, Tag, Trash, RefreshCw } from 'lucide-react';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { storage } from '../../lib/firebase';
+import { ref, uploadBytes, getDownloadURL, getStorage } from 'firebase/storage';
+import { app, storage } from '../../lib/firebase';
 import { useAuth } from '../auth/useAuth';
 import { callRegisterMediaAsset, callListMediaAssets, callDeleteMediaAsset } from '../../lib/functions';
 import { validateImageFile } from '../../lib/storage';
@@ -21,6 +21,37 @@ const formatBytes = (bytes) => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+};
+
+const getAlternateBucket = (bucket) => {
+  if (!bucket) return null;
+  if (bucket.endsWith('.firebasestorage.app')) {
+    return `${bucket.replace(/\.firebasestorage\.app$/, '')}.appspot.com`;
+  }
+  if (bucket.endsWith('.appspot.com')) {
+    return `${bucket.replace(/\.appspot\.com$/, '')}.firebasestorage.app`;
+  }
+  return null;
+};
+
+const getPreferredBucket = (bucket) => {
+  if (!bucket) return null;
+  if (bucket.endsWith('.firebasestorage.app')) {
+    return `${bucket.replace(/\.firebasestorage\.app$/, '')}.appspot.com`;
+  }
+  return bucket;
+};
+
+const isLikelyBucketOrCorsError = (err) => {
+  const code = String(err?.code || '');
+  const msg = String(err?.message || '').toLowerCase();
+  return (
+    code.includes('storage/unknown') ||
+    msg.includes('cors') ||
+    msg.includes('preflight') ||
+    msg.includes('xmlhttprequest') ||
+    msg.includes('failed to fetch')
+  );
 };
 
 export const MediaManager = () => {
@@ -80,43 +111,68 @@ export const MediaManager = () => {
     const ext = file.name.split('.').pop().toLowerCase();
     const uniqueName = `${uuidv4()}.${ext}`;
     const storagePath = `media/${user.uid}/${uniqueName}`;
-    const storageRef = ref(storage, storagePath);
+    const configuredBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET;
+    const preferredBucket = getPreferredBucket(configuredBucket);
+    const alternateBucket = getAlternateBucket(preferredBucket);
 
     setUploading(true);
     setUploadProgress(0);
 
-    const uploadTask = uploadBytesResumable(storageRef, file);
+    try {
+      const attemptedBuckets = [];
+      const uploadToBucket = async (bucket) => {
+        if (!bucket) {
+          const fallbackRef = ref(storage, storagePath);
+          attemptedBuckets.push('default-sdk-storage');
+          await uploadBytes(fallbackRef, file);
+          return;
+        }
+        attemptedBuckets.push(bucket);
+        const bucketStorage = getStorage(app, `gs://${bucket}`);
+        const bucketRef = ref(bucketStorage, storagePath);
+        await uploadBytes(bucketRef, file);
+      };
 
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-        setUploadProgress(pct);
-      },
-      (err) => {
-        console.error('Upload error:', err);
-        setUploadError(err.message || 'Upload failed.');
-        setUploading(false);
-      },
-      async () => {
+      try {
+        await uploadToBucket(preferredBucket);
+      } catch (primaryErr) {
+        if (!alternateBucket || !isLikelyBucketOrCorsError(primaryErr) || alternateBucket === preferredBucket) {
+          throw primaryErr;
+        }
+
+        console.warn(`Primary bucket upload failed, retrying with alternate bucket: ${alternateBucket}`);
         try {
-          await callRegisterMediaAsset({
-            storagePath,
-            fileName: file.name,
-            mimeType: file.type,
-            sizeBytes: file.size,
-          });
-          await loadAssets({ reset: true });
-        } catch (err) {
-          console.error('Register asset error:', err);
-          setUploadError('Upload succeeded but metadata save failed: ' + (err?.message || ''));
-        } finally {
-          setUploading(false);
-          setUploadProgress(0);
-          if (fileInputRef.current) fileInputRef.current.value = '';
+          await uploadToBucket(alternateBucket);
+        } catch (secondaryErr) {
+          secondaryErr.message = `${secondaryErr?.message || 'Upload failed.'} Tried buckets: ${attemptedBuckets.join(', ')}`;
+          throw secondaryErr;
         }
       }
-    );
+
+      setUploadProgress(100);
+
+      await callRegisterMediaAsset({
+        storagePath,
+        fileName: file.name,
+        mimeType: file.type,
+        sizeBytes: file.size,
+      });
+      await loadAssets({ reset: true });
+    } catch (err) {
+      console.error('Upload error:', err);
+      const code = String(err?.code || '');
+      if (code.includes('storage/unauthorized')) {
+        setUploadError('Upload denied by Storage rules. Confirm your user has staff role (admin/editor) in users/{uid}.');
+      } else if (code.includes('storage/unknown')) {
+        setUploadError('Upload failed (possible bucket/CORS mismatch). Verify VITE_FIREBASE_STORAGE_BUCKET matches your Firebase bucket and deploy Storage rules.');
+      } else {
+        setUploadError(err?.message || 'Upload failed.');
+      }
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleDelete = async (asset) => {

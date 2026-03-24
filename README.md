@@ -64,6 +64,7 @@ cp apps/web/.env.example apps/web/.env.local
 ### 3. Start emulators
 
 ```bash
+# If command not found appears, run: npm install
 npm run emulators
 # Starts Auth (9099), Firestore (8080), Storage (9199), Functions (5001), Hosting (5000)
 # Emulator UI at http://localhost:4000
@@ -77,12 +78,21 @@ In a separate terminal (while emulators are running):
 npm run seed
 ```
 
+If seeding fails:
+
+- `Cannot find module 'firebase-admin/app'`:
+	run `npm install` at repo root (the seed script depends on root packages).
+- `ECONNREFUSED` while creating users:
+	Auth emulator is not running on `localhost:9099`. Start emulators first with `npm run emulators`.
+
 This creates three demo users:
 | Role    | Email                    | Password       |
 |---------|--------------------------|----------------|
 | admin   | admin@flarecms.dev       | Admin1234!     |
 | editor  | editor@flarecms.dev      | Editor1234!    |
 | user    | user@flarecms.dev        | User1234!      |
+
+These credentials are not automatically created in production Firebase projects.
 
 ### 5. Start the frontend dev server
 
@@ -138,6 +148,25 @@ export FIREBASE_SERVICE_ACCOUNT_KEY=/path/to/serviceAccountKey.json
 python scripts/bootstrap_admin.py admin@example.com
 ```
 
+### 6. Inject default users directly (no emulators)
+
+```bash
+npm run inject:users
+```
+
+This creates/updates these Auth users with roles and profile documents:
+
+| Role    | Email               | Password    |
+|---------|---------------------|-------------|
+| admin   | admin@flarecms.dev  | Admin1234!  |
+| editor  | editor@flarecms.dev | Editor1234! |
+| user    | user@flarecms.dev   | User1234!   |
+
+Firestore writes include:
+
+- `users/{uid}` (authoritative app profile)
+- `users_by_name/{full-name-slug}/info/profile` (human-readable mirror)
+
 ---
 
 ## Data Model
@@ -146,10 +175,13 @@ python scripts/bootstrap_admin.py admin@example.com
 | Field | Type | Description |
 |-------|------|-------------|
 | email | string | User email |
-| displayName | string | Display name |
+| fullName | string | Full name |
+| displayName | string | Backward-compatible display name mirror |
 | role | `user` \| `editor` \| `admin` | Access role |
 | createdAt | timestamp | Account creation |
 | updatedAt | timestamp | Last profile update |
+
+Note: `users` document IDs should remain the Firebase Auth `uid`. Do not use full name as the document ID; names are not unique and can change.
 
 ### `pages/{pageId}`
 | Field | Type | Description |

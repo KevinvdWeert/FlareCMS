@@ -68,9 +68,9 @@ export const AdminLayout = () => {
           </a>
 
           <div className="admin-user-pill">
-            <div className="admin-user-avatar">{(profile?.displayName || user?.email || 'A').charAt(0).toUpperCase()}</div>
+            <div className="admin-user-avatar">{(profile?.fullName || profile?.displayName || user?.email || 'A').charAt(0).toUpperCase()}</div>
             <div>
-              <p className="admin-user-name">{profile?.displayName || user?.email || 'Administrator'}</p>
+              <p className="admin-user-name">{profile?.fullName || profile?.displayName || user?.email || 'Administrator'}</p>
               <p className="admin-user-role">{profile?.role || 'user'}</p>
             </div>
           </div>
