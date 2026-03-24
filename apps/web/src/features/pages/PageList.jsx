@@ -6,11 +6,17 @@ import { Edit, Trash, Plus } from 'lucide-react';
 export const PageList = () => {
   const [pages, setPages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const PAGES_PER_LOAD = 10;
 
   const fetchAllPages = async () => {
     setLoading(true);
-    const data = await getPages(false);
-    setPages(data);
+    try {
+      const data = await getPages(false);
+      setPages(data);
+    } catch (err) {
+      console.error("Error fetching pages:", err);
+      alert("Failed to load pages. Check Firestore permissions.");
+    }
     setLoading(false);
   };
 
@@ -25,6 +31,9 @@ export const PageList = () => {
     }
   };
 
+  const displayedPages = pages.slice(0, PAGES_PER_LOAD);
+  const hasMorePages = pages.length > PAGES_PER_LOAD;
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
@@ -37,7 +46,8 @@ export const PageList = () => {
       {loading ? (
         <p>Loading pages...</p>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           <thead style={{ background: '#f1f5f9', textAlign: 'left' }}>
             <tr>
               <th style={{ padding: '15px' }}>Title</th>
@@ -47,7 +57,7 @@ export const PageList = () => {
             </tr>
           </thead>
           <tbody>
-            {pages.map((page) => (
+            {displayedPages.map((page) => (
               <tr key={page.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                 <td style={{ padding: '15px' }}>{page.title}</td>
                 <td style={{ padding: '15px', color: '#64748b' }}>/{page.slug}</td>
@@ -78,7 +88,13 @@ export const PageList = () => {
               </tr>
             )}
           </tbody>
-        </table>
+          </table>
+          {hasMorePages && (
+            <p style={{ marginTop: '20px', textAlign: 'center', color: '#64748b' }}>
+              Showing {displayedPages.length} of {pages.length} pages
+            </p>
+          )}
+        </div>
       )}
     </div>
   );

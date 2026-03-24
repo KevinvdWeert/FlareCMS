@@ -50,6 +50,10 @@ To manage users, you need at least one `admin` user.
 4. Run the script:
    ```bash
    cd scripts
+   # You can pass UID
    python bootstrap_admin.py <UID_FROM_FIREBASE_AUTH> admin@example.com
+
+   # Or pass email directly (script will resolve UID for you)
+   python bootstrap_admin.py admin@example.com
    ```
 5. Log in with that user at `/admin/login`. You now have admin privileges and can promote other users from `/admin/users`.
