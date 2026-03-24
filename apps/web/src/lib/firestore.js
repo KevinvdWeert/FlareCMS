@@ -9,6 +9,8 @@ import {
   query, 
   where,
   orderBy,
+  limit,
+  startAfter,
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -44,6 +46,36 @@ export const getPages = async (onlyPublished = false) => {
 
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
+/**
+ * Fetches pages using cursor-based pagination.
+ * @param {{ pageSize?: number, cursor?: import('firebase/firestore').QueryDocumentSnapshot|null, onlyPublished?: boolean }} options
+ * @returns {Promise<{ items: Array<object>, nextCursor: import('firebase/firestore').QueryDocumentSnapshot|null, hasMore: boolean }>}
+ */
+export const getPagesPaginated = async ({ pageSize = 10, cursor = null, onlyPublished = false } = {}) => {
+  const pagesRef = collection(db, 'pages');
+  const constraints = [orderBy('createdAt', 'desc'), limit(pageSize + 1)];
+
+  if (onlyPublished) {
+    constraints.unshift(where('status', '==', 'published'));
+  }
+  if (cursor) {
+    constraints.push(startAfter(cursor));
+  }
+
+  const q = query(pagesRef, ...constraints);
+  const snap = await getDocs(q);
+  const docs = snap.docs;
+  const hasMore = docs.length > pageSize;
+  const pageDocs = docs.slice(0, pageSize);
+  const nextCursor = hasMore ? pageDocs[pageDocs.length - 1] : null;
+
+  return {
+    items: pageDocs.map((d) => ({ id: d.id, ...d.data() })),
+    nextCursor,
+    hasMore
+  };
 };
 
 export const getPageById = async (id) => {

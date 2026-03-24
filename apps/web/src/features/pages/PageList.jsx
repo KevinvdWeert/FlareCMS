@@ -1,38 +1,49 @@
 import React, { useEffect, useState } from 'react';
-import { getPages, deletePage } from '../../lib/firestore';
-import { Link, useNavigate } from 'react-router-dom';
+import { getPagesPaginated, deletePage } from '../../lib/firestore';
+import { Link } from 'react-router-dom';
 import { Edit, Trash, Plus } from 'lucide-react';
 
 export const PageList = () => {
   const [pages, setPages] = useState([]);
   const [loading, setLoading] = useState(true);
-  const PAGES_PER_LOAD = 10;
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [cursor, setCursor] = useState(null);
+  const [hasMorePages, setHasMorePages] = useState(false);
+  const PAGE_SIZE = 10;
 
-  const fetchAllPages = async () => {
-    setLoading(true);
+  const fetchPageChunk = async ({ next = false } = {}) => {
+    if (next) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
     try {
-      const data = await getPages(false);
-      setPages(data);
+      const data = await getPagesPaginated({
+        pageSize: PAGE_SIZE,
+        cursor: next ? cursor : null
+      });
+      setPages((prev) => (next ? [...prev, ...data.items] : data.items));
+      setCursor(data.nextCursor);
+      setHasMorePages(data.hasMore);
     } catch (err) {
       console.error("Error fetching pages:", err);
       alert("Failed to load pages. Check Firestore permissions.");
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
-    fetchAllPages();
+    fetchPageChunk();
   }, []);
 
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this page?")) {
       await deletePage(id);
-      await fetchAllPages();
+      await fetchPageChunk();
     }
   };
-
-  const displayedPages = pages.slice(0, PAGES_PER_LOAD);
-  const hasMorePages = pages.length > PAGES_PER_LOAD;
 
   return (
     <div>
@@ -57,7 +68,7 @@ export const PageList = () => {
             </tr>
           </thead>
           <tbody>
-            {displayedPages.map((page) => (
+            {pages.map((page) => (
               <tr key={page.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                 <td style={{ padding: '15px' }}>{page.title}</td>
                 <td style={{ padding: '15px', color: '#64748b' }}>/{page.slug}</td>
@@ -90,9 +101,15 @@ export const PageList = () => {
           </tbody>
           </table>
           {hasMorePages && (
-            <p style={{ marginTop: '20px', textAlign: 'center', color: '#64748b' }}>
-              Showing {displayedPages.length} of {pages.length} pages
-            </p>
+            <div style={{ marginTop: '20px', textAlign: 'center' }}>
+              <button
+                onClick={() => fetchPageChunk({ next: true })}
+                disabled={loadingMore}
+                style={{ padding: '10px 14px', borderRadius: '4px', border: '1px solid #cbd5e1', background: 'white', cursor: loadingMore ? 'not-allowed' : 'pointer' }}
+              >
+                {loadingMore ? 'Loading...' : 'Load more pages'}
+              </button>
+            </div>
           )}
         </div>
       )}
