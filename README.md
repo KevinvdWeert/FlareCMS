@@ -46,7 +46,10 @@ To manage users, you need at least one `admin` user.
    ```bash
    pip install firebase-admin
    ```
-3. Generate a Service Account key from Firebase Project Settings > Service Accounts. Save it as `serviceAccountKey.json` inside `/scripts`.
+3. Generate a Service Account key from Firebase Project Settings > Service Accounts and keep it outside the repo. Export:
+   ```bash
+   export FIREBASE_SERVICE_ACCOUNT_KEY=/absolute/path/to/serviceAccountKey.json
+   ```
 4. Run the script:
    ```bash
    cd scripts
@@ -57,3 +60,8 @@ To manage users, you need at least one `admin` user.
    python bootstrap_admin.py admin@example.com
    ```
 5. Log in with that user at `/admin/login`. You now have admin privileges and can promote other users from `/admin/users`.
+
+### Auth Improvements
+- Signup UI: `/signup`
+- Password reset UI: `/password-reset`
+- Login now includes basic client-side throttling after repeated failed attempts.

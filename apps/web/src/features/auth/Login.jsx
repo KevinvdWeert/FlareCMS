@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { loginFirebase } from '../../lib/auth';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
+import { validateEmail } from '../../lib/validation';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -17,6 +18,10 @@ export const Login = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    if (!validateEmail(email)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
     try {
       await loginFirebase(email, password);
       navigate('/admin');
@@ -50,6 +55,12 @@ export const Login = () => {
           Login
         </button>
       </form>
+      <p style={{ fontSize: '12px', color: '#64748b', marginTop: '8px' }}>
+        For security, login is temporarily locked after repeated failures.
+      </p>
+      <p style={{ marginTop: '12px', color: '#64748b' }}>
+        <Link to="/password-reset">Forgot password?</Link> · <Link to="/signup">Create account</Link>
+      </p>
     </div>
   );
 };

@@ -5,6 +5,7 @@ import { uploadFeaturedImage } from '../../lib/storage';
 import { useAuth } from '../auth/AuthContext';
 import { BlockEditor } from '../blocks/BlockEditor';
 import { ArrowLeft, Save } from 'lucide-react';
+import { validateSlug, validateTitle } from '../../lib/validation';
 
 export const PageEditor = () => {
   const { id } = useParams();
@@ -78,6 +79,14 @@ export const PageEditor = () => {
     
     if (!title || !slug) {
       setError('Title and slug are required.');
+      return;
+    }
+    if (!validateTitle(title)) {
+      setError('Title must be at least 2 characters.');
+      return;
+    }
+    if (!validateSlug(slug)) {
+      setError('Slug must be lowercase letters, numbers, and hyphens only.');
       return;
     }
 
