@@ -34,8 +34,11 @@ service cloud.firestore {
     match /pages/{pageId} {
       // Anyone can read published pages
       allow read: if resource.data.status == 'published' || isStaff();
-      // Only staff can create/update/delete pages
-      allow write: if isStaff();
+      // Any staff can create a new page
+      allow create: if isStaff();
+      // Only the page author or an admin can update or delete the page
+      allow update: if isStaff() && (resource.data.createdBy == request.auth.uid || isAdmin());
+      allow delete: if isStaff() && (resource.data.createdBy == request.auth.uid || isAdmin());
     }
 
     // Users Collection

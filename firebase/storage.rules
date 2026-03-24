@@ -14,11 +14,23 @@ service firebase.storage {
       );
     }
 
+    function isAdmin() {
+      return isAuthenticated() &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isPageAuthor(pageId) {
+      return isAuthenticated() &&
+        firestore.get(/databases/(default)/documents/pages/$(pageId)).data.createdBy == request.auth.uid;
+    }
+
     match /pages/{pageId}/{allPaths=**} {
-      // Public can read all uploaded images inside pages (so they show up onpublished pages)
-      // Writing requires staff privileges
+      // Public can read images so they render on published pages
       allow read: if true;
-      allow write: if isStaff();
+      // Only the page author or an admin may write; enforce 5 MB size limit and image MIME types
+      allow write: if (isPageAuthor(pageId) || isAdmin())
+        && request.resource.size <= 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
     }
   }
 }

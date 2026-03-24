@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { getImageUrl } from '../../lib/storage';
+import React from 'react';
+import { useImageUrl } from '../../hooks/useImageUrl';
 
 export const BlockRenderer = ({ blocks }) => {
   if (!blocks || blocks.length === 0) return null;
@@ -37,20 +37,9 @@ const Block = ({ block }) => {
 
 // Extracted component to handle async image url fetching
 const RenderedImage = ({ block }) => {
-  const [url, setUrl] = useState(null);
+  const { url, error } = useImageUrl(block.storagePath);
 
-  useEffect(() => {
-    const fetchUrl = async () => {
-      try {
-        const downloadUrl = await getImageUrl(block.storagePath);
-        setUrl(downloadUrl);
-      } catch (err) {
-        console.error("Failed to load image", err);
-      }
-    };
-    fetchUrl();
-  }, [block.storagePath]);
-
+  if (error) return <div style={{ background: '#fee2e2', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', fontSize: '14px' }}>Failed to load image.</div>;
   if (!url) return <div style={{ background: '#f1f5f9', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>Loading image...</div>;
 
   return (
