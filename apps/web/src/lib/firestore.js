@@ -152,6 +152,16 @@ export const deletePage = async (id) => {
 };
 
 /**
+ * Fetches the general site settings document.
+ * @returns {Promise<object|null>}
+ */
+export const getGeneralSettings = async () => {
+  const settingsRef = doc(db, 'settings', 'general');
+  const snap = await getDoc(settingsRef);
+  return snap.exists() ? snap.data() : null;
+};
+
+/**
  * Converts a Firestore Timestamp value to a JavaScript Date.
  *
  * Cloud Functions callables serialize Firestore Timestamps as plain objects

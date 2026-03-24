@@ -111,8 +111,10 @@ service cloud.firestore {
     // Settings Collection (system config)
     // ---------------------------------------------------------------------------
     match /settings/{settingId} {
-      // Admins can read and write settings
-      allow read: if isAdmin();
+      // The 'general' document is publicly readable so the front-page setting
+      // can be used to render the public home page without authentication.
+      allow read: if settingId == 'general' || isAdmin();
+      // Only admins (via Cloud Functions) may write settings.
       allow write: if isAdmin();
     }
   }

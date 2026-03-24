@@ -347,3 +347,56 @@ export const unpublishPage = functions.https.onCall(async (data, context) => {
   log.info("Page unpublished", { pageId: id, uid });
   return { success: true };
 });
+
+/**
+ * Callable: Set or clear the site's front page. Admin only.
+ * Pass pageId to set a published page as the front page, or null to clear it.
+ */
+export const setFrontPage = functions.https.onCall(async (data, context) => {
+  const log = createLogger();
+  const callerData = await requireStaff(context);
+  const uid = context.auth!.uid;
+
+  if (callerData.role !== "admin") {
+    throw new functions.https.HttpsError("permission-denied", ErrorMessages.FORBIDDEN);
+  }
+
+  const { pageId } = (data as { pageId?: string | null }) || {};
+
+  if (pageId != null) {
+    if (typeof pageId !== "string") {
+      throw new functions.https.HttpsError("invalid-argument", "pageId must be a string or null.");
+    }
+    const pageSnap = await db.collection("pages").doc(pageId).get();
+    if (!pageSnap.exists) {
+      throw new functions.https.HttpsError("not-found", ErrorMessages.NOT_FOUND);
+    }
+    if (pageSnap.data()!.status !== "published") {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "Only a published page can be set as the front page."
+      );
+    }
+  }
+
+  await db.collection("settings").doc("general").set(
+    {
+      frontPageId: pageId ?? null,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedBy: uid,
+    },
+    { merge: true }
+  );
+
+  await writeActivityLog({
+    actorId: uid,
+    actorEmail: context.auth!.token?.email || null,
+    action: "front_page_set",
+    resourceType: "settings",
+    resourceId: "general",
+    meta: { pageId: pageId ?? null },
+  });
+
+  log.info("Front page updated", { pageId: pageId ?? null, uid });
+  return { success: true };
+});

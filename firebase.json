@@ -4,7 +4,8 @@
     "indexes": "firestore.indexes.json"
   },
   "storage": {
-    "rules": "firebase/storage.rules"
+    "rules": "firebase/storage.rules",
+    "cors": "firebase/cors.json"
   },
   "functions": [
     {

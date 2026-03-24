@@ -1,16 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { getPagesPaginated, deletePage } from '../../lib/firestore';
+import { getPagesPaginated, deletePage, getGeneralSettings } from '../../lib/firestore';
+import { callSetFrontPage } from '../../lib/functions';
 import { Link } from 'react-router-dom';
-import { Edit, Trash, Plus, FileStack } from 'lucide-react';
+import { Edit, Trash, Plus, FileStack, Home } from 'lucide-react';
+import { useAuth } from '../auth/useAuth';
 
 export const PageList = () => {
+  const { user } = useAuth();
   const [pages, setPages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [cursor, setCursor] = useState(null);
   const [hasMorePages, setHasMorePages] = useState(false);
   const [error, setError] = useState('');
+  const [frontPageId, setFrontPageId] = useState(null);
+  const [settingFrontPage, setSettingFrontPage] = useState('');
   const PAGE_SIZE = 10;
+
+  const isAdmin = user?.role === 'admin';
 
   const fetchPageChunk = async ({ next = false } = {}) => {
     if (next) {
@@ -20,13 +27,16 @@ export const PageList = () => {
     }
     setError('');
     try {
-      const data = await getPagesPaginated({
-        pageSize: PAGE_SIZE,
-        cursor: next ? cursor : null
-      });
+      const [data, settings] = await Promise.all([
+        getPagesPaginated({ pageSize: PAGE_SIZE, cursor: next ? cursor : null }),
+        next ? Promise.resolve(null) : getGeneralSettings(),
+      ]);
       setPages((prev) => (next ? [...prev, ...data.items] : data.items));
       setCursor(data.nextCursor);
       setHasMorePages(data.hasMore);
+      if (settings !== null) {
+        setFrontPageId(settings?.frontPageId ?? null);
+      }
     } catch (err) {
       console.error("Error fetching pages:", err);
       setError("Failed to load pages. Check Firestore permissions.");
@@ -44,6 +54,23 @@ export const PageList = () => {
     if (window.confirm("Are you sure you want to delete this page?")) {
       await deletePage(id);
       await fetchPageChunk();
+    }
+  };
+
+  const handleSetFrontPage = async (pageId) => {
+    const isCurrent = frontPageId === pageId;
+    const action = isCurrent ? 'clear the front page?' : 'set this page as the front page?';
+    if (!window.confirm(`Are you sure you want to ${action}`)) return;
+    setSettingFrontPage(pageId);
+    setError('');
+    try {
+      await callSetFrontPage(isCurrent ? null : pageId);
+      setFrontPageId(isCurrent ? null : pageId);
+    } catch (err) {
+      console.error('Failed to set front page:', err);
+      setError(err?.message || 'Failed to update front page setting.');
+    } finally {
+      setSettingFrontPage('');
     }
   };
 
@@ -87,7 +114,17 @@ export const PageList = () => {
           <tbody>
             {pages.map((page) => (
               <tr key={page.id}>
-                <td>{page.title}</td>
+                <td>
+                  <span className="page-list-title">
+                    {page.title}
+                    {frontPageId === page.id && (
+                      <span className="admin-badge front-page" title="Front page">
+                        <Home size={11} />
+                        Front Page
+                      </span>
+                    )}
+                  </span>
+                </td>
                 <td className="admin-cell-muted">/{page.slug}</td>
                 <td>
                   <span className={`admin-badge ${page.status === 'published' ? 'published' : 'draft'}`}>
@@ -95,6 +132,17 @@ export const PageList = () => {
                   </span>
                 </td>
                 <td className="align-right">
+                  {isAdmin && page.status === 'published' && (
+                    <button
+                      onClick={() => handleSetFrontPage(page.id)}
+                      className={`admin-icon-action front-page${frontPageId === page.id ? ' is-active' : ''}`}
+                      aria-label={frontPageId === page.id ? 'Clear front page' : 'Set as front page'}
+                      disabled={settingFrontPage === page.id}
+                      title={frontPageId === page.id ? 'Clear front page' : 'Set as front page'}
+                    >
+                      <Home size={18} />
+                    </button>
+                  )}
                   <Link to={`/admin/pages/${page.id}`} className="admin-icon-action edit" aria-label="Edit page">
                     <Edit size={18} />
                   </Link>
