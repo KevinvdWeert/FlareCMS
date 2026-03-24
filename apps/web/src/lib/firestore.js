@@ -150,3 +150,26 @@ export const deletePage = async (id) => {
   const pageRef = doc(db, 'pages', id);
   await deleteDoc(pageRef);
 };
+
+/**
+ * Converts a Firestore Timestamp value to a JavaScript Date.
+ *
+ * Cloud Functions callables serialize Firestore Timestamps as plain objects
+ * { seconds, nanoseconds } (or { _seconds, _nanoseconds }), not as Timestamp
+ * instances. This helper handles all three cases:
+ *   - A native Firestore Timestamp with a `.toDate()` method
+ *   - A serialized plain object with `seconds` / `nanoseconds` fields
+ *   - A serialized plain object with `_seconds` / `_nanoseconds` fields
+ *   - Any other value passed directly to `new Date()` (e.g. ISO string, epoch ms)
+ *
+ * @param {unknown} ts - The timestamp value to convert.
+ * @returns {Date} The corresponding JavaScript Date, or an Invalid Date if
+ *   the input cannot be parsed.
+ */
+export const parseFirestoreTimestamp = (ts) => {
+  if (!ts) return new Date(NaN);
+  if (typeof ts.toDate === 'function') return ts.toDate();
+  if (ts.seconds !== undefined) return new Date(ts.seconds * 1000);
+  if (ts._seconds !== undefined) return new Date(ts._seconds * 1000);
+  return new Date(ts);
+};
