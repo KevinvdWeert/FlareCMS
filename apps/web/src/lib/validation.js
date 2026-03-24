@@ -1,4 +1,16 @@
-export const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((email || '').trim());
+export const normalizeEmail = (email) => (email || '').trim().toLowerCase();
+
+export const validateEmail = (email) => {
+  const value = normalizeEmail(email);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    return false;
+  }
+  if (value.includes('..')) {
+    return false;
+  }
+  const [, domain = ''] = value.split('@');
+  return domain.split('.').every((label) => label.length > 0);
+};
 
 export const validateSlug = (slug) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test((slug || '').trim());
 

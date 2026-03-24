@@ -55,7 +55,7 @@ export const Login = () => {
           Login
         </button>
       </form>
-      <p style={{ fontSize: '12px', color: '#64748b', marginTop: '8px' }}>
+      <p style={{ fontSize: '14px', color: '#64748b', marginTop: '8px' }}>
         For security, login is temporarily locked after repeated failures.
       </p>
       <p style={{ marginTop: '12px', color: '#64748b' }}>

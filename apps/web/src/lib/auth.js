@@ -9,12 +9,15 @@ import {
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth } from './firebase';
 import { db } from './firebase';
+import { normalizeEmail } from './validation';
 
 const LOGIN_FAILURE_KEY = 'flarecms-login-failures';
+// 15-minute lock window after MAX_LOGIN_ATTEMPTS failed logins.
 const LOGIN_LOCK_WINDOW_MS = 15 * 60 * 1000;
 const MAX_LOGIN_ATTEMPTS = 5;
 
 export const loginFirebase = async (email, password) => {
+  const normalizedEmail = normalizeEmail(email);
   if (typeof window !== 'undefined') {
     const raw = localStorage.getItem(LOGIN_FAILURE_KEY);
     if (raw) {
@@ -22,7 +25,7 @@ export const loginFirebase = async (email, password) => {
       if (
         data.blockedUntil &&
         Date.now() < data.blockedUntil &&
-        data.email === email.trim().toLowerCase()
+        data.email === normalizedEmail
       ) {
         throw new Error('Too many failed attempts. Try again later.');
       }
@@ -30,14 +33,13 @@ export const loginFirebase = async (email, password) => {
   }
 
   try {
-    const response = await signInWithEmailAndPassword(auth, email, password);
+    const response = await signInWithEmailAndPassword(auth, normalizedEmail, password);
     if (typeof window !== 'undefined') {
       localStorage.removeItem(LOGIN_FAILURE_KEY);
     }
     return response;
   } catch (err) {
     if (typeof window !== 'undefined') {
-      const normalizedEmail = email.trim().toLowerCase();
       const raw = localStorage.getItem(LOGIN_FAILURE_KEY);
       const data = raw ? JSON.parse(raw) : { count: 0, email: normalizedEmail };
       const isSameEmail = data.email === normalizedEmail;
@@ -61,10 +63,11 @@ export const observeAuthState = (callback) => {
 };
 
 export const signupFirebase = async (email, password, displayName) => {
-  const credentials = await createUserWithEmailAndPassword(auth, email, password);
+  const normalizedEmail = normalizeEmail(email);
+  const credentials = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
   await updateProfile(credentials.user, { displayName });
   await setDoc(doc(db, 'users', credentials.user.uid), {
-    email: email.trim().toLowerCase(),
+    email: normalizedEmail,
     displayName: displayName.trim(),
     role: 'user',
     createdAt: serverTimestamp()
@@ -73,5 +76,5 @@ export const signupFirebase = async (email, password, displayName) => {
 };
 
 export const sendResetPasswordEmail = async (email) => {
-  return await sendPasswordResetEmail(auth, email.trim().toLowerCase());
+  return await sendPasswordResetEmail(auth, normalizeEmail(email));
 };

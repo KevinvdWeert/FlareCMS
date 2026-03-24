@@ -48,6 +48,11 @@ export const getPages = async (onlyPublished = false) => {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 };
 
+/**
+ * Fetches pages using cursor-based pagination.
+ * @param {{ pageSize?: number, cursor?: import('firebase/firestore').QueryDocumentSnapshot|null, onlyPublished?: boolean }} options
+ * @returns {Promise<{ items: Array<object>, nextCursor: import('firebase/firestore').QueryDocumentSnapshot|null, hasMore: boolean }>}
+ */
 export const getPagesPaginated = async ({ pageSize = 10, cursor = null, onlyPublished = false } = {}) => {
   const pagesRef = collection(db, 'pages');
   const constraints = [orderBy('createdAt', 'desc'), limit(pageSize + 1)];

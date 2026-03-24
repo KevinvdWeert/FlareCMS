@@ -4,6 +4,7 @@ import { getUserProfile } from '../../lib/firestore';
 
 const AuthContext = createContext();
 const PROFILE_CACHE_PREFIX = 'flarecms-profile:';
+// Cache profile locally for 1 hour to reduce repeated Firestore reads.
 const PROFILE_CACHE_TTL_MS = 60 * 60 * 1000;
 
 export const AuthProvider = ({ children }) => {
@@ -40,11 +41,7 @@ export const AuthProvider = ({ children }) => {
         }
       } else {
         if (typeof window !== 'undefined') {
-          Object.keys(localStorage).forEach((key) => {
-            if (key.startsWith(PROFILE_CACHE_PREFIX)) {
-              localStorage.removeItem(key);
-            }
-          });
+          localStorage.removeItem(`${PROFILE_CACHE_PREFIX}${user?.uid || ''}`);
         }
         setProfile(null);
       }
