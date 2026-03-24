@@ -5,6 +5,7 @@ import { storage } from '../../lib/firebase';
 import { useAuth } from '../auth/useAuth';
 import { callRegisterMediaAsset, callListMediaAssets, callDeleteMediaAsset } from '../../lib/functions';
 import { validateImageFile } from '../../lib/storage';
+import { parseFirestoreTimestamp } from '../../lib/firestore';
 import { v4 as uuidv4 } from 'uuid';
 
 const MIME_LABELS = {
@@ -291,7 +292,7 @@ export const MediaManager = () => {
               <h4>{selected.fileName}</h4>
               <p className="media-side-meta">
                 Uploaded {selected.createdAt
-                  ? new Date(selected.createdAt?.toMillis?.() || selected.createdAt).toLocaleDateString()
+                  ? parseFirestoreTimestamp(selected.createdAt).toLocaleDateString()
                   : '—'}
               </p>
               <div className="media-side-specs">

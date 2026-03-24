@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, Globe, Layers, Sparkles } from 'lucide-react';
 import { callGetDashboardStats, callGetRecentActivity } from '../../lib/functions';
+import { parseFirestoreTimestamp } from '../../lib/firestore';
 
 const ACTION_LABELS = {
   page_created: 'created page',
@@ -17,7 +18,7 @@ const ACTION_LABELS = {
 
 const formatActivityTime = (createdAt) => {
   if (!createdAt) return '';
-  const date = createdAt?.toDate?.() || new Date(createdAt);
+  const date = parseFirestoreTimestamp(createdAt);
   const diffMs = Date.now() - date.getTime();
   const diffMin = Math.floor(diffMs / 60000);
   if (diffMin < 1) return 'Just now';
