@@ -1,13 +1,9 @@
 import React, { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { validateImageFile, uploadImageToServer } from '../../lib/storage';
-import { createImageRecord } from '../../lib/firestore';
-import { useAuth } from '../auth/useAuth';
 import { Type, Image as ImageIcon, Heading1, Trash, ArrowUp, ArrowDown } from 'lucide-react';
 
-export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
-  const { user } = useAuth();
-  const [uploadError, setUploadError] = useState('');
+export const BlockEditor = ({ blocks, setBlocks }) => {
+  const [pathError, setPathError] = useState('');
 
   const addBlock = (type) => {
     const newBlock = { id: uuidv4(), type };
@@ -50,35 +46,20 @@ export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
     setBlocks(newBlocks);
   };
 
-  const handleImageUpload = async (index, file) => {
-    setUploadError('');
-    if (!file) return;
-
-    try {
-      validateImageFile(file);
-      const result = await uploadImageToServer(file);
-
-      // Register in Firestore images collection and get the new image ID
-      const imageId = await createImageRecord({
-        path: result.path,
-        fileName: result.fileName,
-        mimeType: result.mimeType,
-        sizeBytes: result.sizeBytes,
-        ownerId: user?.uid || '',
-      });
-
-      const newBlocks = [...blocks];
-      newBlocks[index] = {
-        ...newBlocks[index],
-        imageId,
-        imagePath: result.path,
-        alt: result.fileName,
-      };
-      setBlocks(newBlocks);
-    } catch (err) {
-      console.error(err);
-      setUploadError(err.message || 'Image upload failed. Make sure the upload server is running (`npm run server:dev`).');
+  const handleImagePathSet = (index, value) => {
+    setPathError('');
+    const path = (value || '').trim();
+    if (!path) {
+      setPathError('Image path is required for image blocks.');
+      return;
     }
+    const normalized = path.startsWith('/') ? path.slice(1) : path;
+    const newBlocks = [...blocks];
+    newBlocks[index].storagePath = normalized;
+    if (!newBlocks[index].alt) {
+      newBlocks[index].alt = normalized.split('/').pop() || '';
+    }
+    setBlocks(newBlocks);
   };
 
   return (
@@ -95,8 +76,8 @@ export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
         </button>
       </div>
 
-      {uploadError && (
-        <div className="admin-editor-error" style={{ marginBottom: '10px' }}>{uploadError}</div>
+      {pathError && (
+        <div className="admin-editor-error" style={{ marginBottom: '10px' }}>{pathError}</div>
       )}
 
       <div className="block-list">
@@ -143,7 +124,15 @@ export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
 
             {block.type === 'image' && (
               <div className="block-form-column">
-                {block.imagePath ? (
+                <input
+                  className="block-input block-input-grow"
+                  type="text"
+                  value={block.storagePath || ''}
+                  onChange={(e) => updateBlock(index, 'storagePath', e.target.value)}
+                  onBlur={(e) => handleImagePathSet(index, e.target.value)}
+                  placeholder="Relative image path, e.g. /media/article/hero.jpg"
+                />
+                {block.storagePath && (
                   <div className="block-image-meta">
                     <img
                       src={block.imagePath}
@@ -163,19 +152,14 @@ export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
                       Replace image
                     </button>
                   </div>
-                ) : (
-                  <label className="admin-button-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                    <ImageIcon size={14} />
-                    <span>Upload Image</span>
-                    <input
-                      className="block-input block-input-grow"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleImageUpload(index, e.target.files?.[0])}
-                      style={{ display: 'none' }}
-                    />
-                  </label>
                 )}
+                <input
+                  type="text"
+                  value={block.alt || ''}
+                  onChange={(e) => updateBlock(index, 'alt', e.target.value)}
+                  placeholder="Alt text..."
+                  className="block-input block-input-grow"
+                />
                 <input 
                   type="text" 
                   value={block.caption || ''} 

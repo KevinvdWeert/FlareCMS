@@ -1,8 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CloudUpload, Grid3X3, List, Tag, Trash, RefreshCw } from 'lucide-react';
-import { useAuth } from '../auth/useAuth';
-import { validateImageFile, uploadImageToServer } from '../../lib/storage';
-import { createImageRecord, getImagesPaginated, deleteImageRecord } from '../../lib/firestore';
+import { resolveMediaUrl } from '../../lib/storage';
+import { callRegisterMediaAsset, callListMediaAssets, callDeleteMediaAsset } from '../../lib/functions';
 import { parseFirestoreTimestamp } from '../../lib/firestore';
 
 const MIME_LABELS = {
@@ -20,19 +19,28 @@ const formatBytes = (bytes) => {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 };
 
+const guessMimeType = (path) => {
+  const lower = String(path || '').toLowerCase();
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.gif')) return 'image/gif';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.svg')) return 'image/svg+xml';
+  return 'image/jpeg';
+};
+
 export const MediaManager = () => {
-  const { user } = useAuth();
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cursor, setCursor] = useState(null);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState('');
-  const [uploading, setUploading] = useState(false);
+  const [savingPath, setSavingPath] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [selected, setSelected] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
   const [deletingId, setDeletingId] = useState('');
-  const fileInputRef = useRef(null);
+  const [pathInput, setPathInput] = useState('');
+  const [nameInput, setNameInput] = useState('');
 
   const loadAssets = async ({ reset = false } = {}) => {
     setLoading(true);
@@ -57,35 +65,37 @@ export const MediaManager = () => {
     loadAssets({ reset: true });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleFileSelect = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleAddPathAsset = async () => {
     setUploadError('');
-
-    try {
-      validateImageFile(file);
-    } catch (err) {
-      setUploadError(err.message);
+    const relativePath = (pathInput || '').trim();
+    if (!relativePath) {
+      setUploadError('Relative image path is required. Example: /media/home/hero.jpg');
       return;
     }
 
-    setUploading(true);
+    const normalizedPath = relativePath.startsWith('/')
+      ? relativePath.slice(1)
+      : relativePath;
+
+    const fileName = (nameInput || normalizedPath.split('/').pop() || 'image').trim();
+    const mimeType = guessMimeType(normalizedPath);
+
+    setSavingPath(true);
     try {
-      const result = await uploadImageToServer(file);
-      await createImageRecord({
-        path: result.path,
-        fileName: result.fileName,
-        mimeType: result.mimeType,
-        sizeBytes: result.sizeBytes,
-        ownerId: user.uid,
+      await callRegisterMediaAsset({
+        storagePath: normalizedPath,
+        fileName,
+        mimeType,
+        sizeBytes: null,
       });
+      setPathInput('');
+      setNameInput('');
       await loadAssets({ reset: true });
     } catch (err) {
-      console.error('Upload error:', err);
-      setUploadError(err?.message || 'Upload failed. Make sure the upload server is running (`npm run server:dev`).');
+      console.error('Register path asset error:', err);
+      setUploadError(err?.message || 'Failed to save image path.');
     } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      setSavingPath(false);
     }
   };
 
@@ -105,6 +115,11 @@ export const MediaManager = () => {
     } finally {
       setDeletingId('');
     }
+  };
+
+  const handleSelect = async (asset) => {
+    setSelected(asset);
+    setPreviewUrl(resolveMediaUrl(asset.storagePath));
   };
 
   return (
@@ -133,18 +148,6 @@ export const MediaManager = () => {
             <RefreshCw size={15} />
             <span>Refresh</span>
           </button>
-          <label className="admin-button-primary" style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}>
-            <CloudUpload size={15} />
-            <span>{uploading ? 'Uploading…' : 'Upload'}</span>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileSelect}
-              disabled={uploading}
-              style={{ display: 'none' }}
-            />
-          </label>
           <div className="media-view-toggle">
             <button type="button" className={viewMode === 'grid' ? 'is-active' : ''} onClick={() => setViewMode('grid')} aria-label="Grid view">
               <Grid3X3 size={15} />
@@ -159,6 +162,33 @@ export const MediaManager = () => {
       {(error || uploadError) && (
         <div className="admin-editor-error">{error || uploadError}</div>
       )}
+
+      <section className="media-toolbar admin-surface" style={{ marginTop: '-6px' }}>
+        <div className="media-toolbar-left" style={{ flex: 1 }}>
+          <input
+            type="text"
+            className="admin-input"
+            placeholder="Relative image path, e.g. /media/home/hero.jpg"
+            value={pathInput}
+            onChange={(e) => setPathInput(e.target.value)}
+            style={{ width: '100%' }}
+          />
+        </div>
+        <div className="media-toolbar-right" style={{ flex: 1 }}>
+          <input
+            type="text"
+            className="admin-input"
+            placeholder="Display name (optional)"
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            style={{ width: '100%' }}
+          />
+          <button type="button" className="admin-button-primary" onClick={handleAddPathAsset} disabled={savingPath}>
+            <CloudUpload size={15} />
+            <span>{savingPath ? 'Saving...' : 'Add Path'}</span>
+          </button>
+        </div>
+      </section>
 
       <section className="media-layout">
         <div className={viewMode === 'grid' ? 'media-grid' : 'media-list'}>
@@ -204,22 +234,20 @@ export const MediaManager = () => {
 
           {!loading && (
             <article className="admin-surface media-card media-card-add">
-              <label style={{ cursor: uploading ? 'not-allowed' : 'pointer', display: 'contents' }}>
+              <button
+                type="button"
+                onClick={handleAddPathAsset}
+                disabled={savingPath}
+                style={{ border: 0, background: 'transparent', display: 'contents', cursor: 'pointer' }}
+              >
                 <div className="media-card-art">
                   <CloudUpload size={20} />
                 </div>
                 <div className="media-card-meta">
                   <p>Add Asset</p>
-                  <small>Upload from desktop</small>
+                  <small>Save relative path</small>
                 </div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  disabled={uploading}
-                  style={{ display: 'none' }}
-                />
-              </label>
+              </button>
             </article>
           )}
         </div>

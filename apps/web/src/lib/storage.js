@@ -1,5 +1,28 @@
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+const MEDIA_BASE_URL = String(import.meta.env.VITE_MEDIA_BASE_URL || '').trim().replace(/\/$/, '');
+
+const isAbsoluteUrl = (value) => /^https?:\/\//i.test(value);
+
+export const resolveMediaUrl = (storagePath) => {
+  if (!storagePath) return null;
+  const raw = String(storagePath).trim();
+  if (!raw) return null;
+
+  if (isAbsoluteUrl(raw) || raw.startsWith('//')) {
+    return raw;
+  }
+
+  if (raw.startsWith('/')) {
+    return raw;
+  }
+
+  if (MEDIA_BASE_URL) {
+    return `${MEDIA_BASE_URL}/${raw.replace(/^\/+/, '')}`;
+  }
+
+  return `/${raw.replace(/^\/+/, '')}`;
+};
 
 /**
  * Validates a file before upload.
@@ -41,5 +64,21 @@ export const uploadImageToServer = async (file) => {
     throw new Error(err.error || `Upload failed with status ${response.status}.`);
   }
 
-  return response.json();
+export const getImageUrl = async (storagePath) => {
+  if (!storagePath) return null;
+  const raw = String(storagePath).trim();
+
+  // Absolute and relative web paths are served directly by the web server/CDN.
+  if (isAbsoluteUrl(raw) || raw.startsWith('/') || raw.startsWith('./') || raw.startsWith('../')) {
+    return resolveMediaUrl(raw);
+  }
+
+  // Backward compatibility: try Firebase Storage for legacy paths.
+  try {
+    const storageRef = ref(storage, raw);
+    return await getDownloadURL(storageRef);
+  } catch {
+    // If Storage is unavailable (no billing/bucket), treat the path as web-relative.
+    return resolveMediaUrl(raw);
+  }
 };
