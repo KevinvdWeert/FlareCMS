@@ -58,57 +58,77 @@ export const PublicHome = () => {
       <header className="site-header">
         <div className="header-content">
           <Link to="/" className="site-logo">FlareCMS</Link>
+          <Link to="/admin/login" className="pub-admin-link">Admin</Link>
         </div>
       </header>
-      
-      <main className="public-home-main">
-        {!frontPage && (
-          <div className="hero-section">
-            <h1>Welcome to FlareCMS</h1>
-            <p>A beautiful, lightning-fast content management system built with React & Firebase.</p>
-          </div>
-        )}
 
-        {frontPage && (
+      <main className="public-home-main">
+
+        {/* ── Hero block ───────────────────────────────────────── */}
+        {frontPage ? (
           <Link to={`/${frontPage.slug}`} className="front-page-hero">
-            {frontPage.featuredImage ? (
-              <div className="front-page-hero-image">
-                <FrontPageHeroImage storagePath={frontPage.featuredImage.storagePath} alt={frontPage.featuredImage.alt} />
+            <div className="pub-hero-inner">
+              <div className="pub-hero-text">
+                <span className="pub-kicker">Featured</span>
+                <h1 className="pub-hero-title">{frontPage.title}</h1>
+                <span className="pub-hero-cta">Read article →</span>
               </div>
-            ) : (
-              <div className="front-page-hero-image placeholder-image">
-                <span className="placeholder-icon">📰</span>
+              <div className="pub-hero-image-wrap">
+                {frontPage.featuredImage ? (
+                  <HeroImage
+                    storagePath={frontPage.featuredImage.storagePath}
+                    alt={frontPage.featuredImage.alt}
+                  />
+                ) : (
+                  <div className="placeholder-image" style={{ height: '100%' }}>
+                    <span>📰</span>
+                  </div>
+                )}
               </div>
-            )}
-            <div className="front-page-hero-content">
-              <span className="front-page-label">Featured</span>
-              <h1>{frontPage.title}</h1>
-              <p className="front-page-slug">/{frontPage.slug}</p>
             </div>
           </Link>
+        ) : (
+          <section className="pub-fallback-hero">
+            <span className="pub-kicker">Welcome</span>
+            <h1 className="pub-splash-title">
+              FlareCMS
+              <em>editorial</em>
+            </h1>
+            <p className="pub-splash-desc">
+              A lightning-fast, beautifully crafted content management system
+              built with React&nbsp;&amp; Firebase.
+            </p>
+          </section>
         )}
 
+        {/* ── Error notice ─────────────────────────────────────── */}
         {loadError && (
-          <div className="empty-state" style={{ marginBottom: '20px' }}>
+          <div className="empty-state">
             <p>{loadError}</p>
           </div>
         )}
-        
+
+        {/* ── Pages grid ───────────────────────────────────────── */}
         {pages.length > 0 && (
-          <>
-            {frontPage && <h2 className="home-section-title">More Pages</h2>}
+          <section className="pub-pages-section">
+            <h2 className="home-section-title">
+              {frontPage ? 'More Pages' : 'Latest'}
+            </h2>
             <div className="page-grid">
               {pages.map((page) => (
                 <Link to={`/${page.slug}`} key={page.id} className="page-card">
-                  {page.featuredImage ? (
-                    <div className="card-image">
-                      <RenderedCardImage storagePath={page.featuredImage.storagePath} alt={page.featuredImage.alt} />
-                    </div>
-                  ) : (
-                    <div className="card-image placeholder-image">
-                      <span className="placeholder-icon">📄</span>
-                    </div>
-                  )}
+                  <div className="card-image">
+                    {page.featuredImage ? (
+                      <CardImage
+                        storagePath={page.featuredImage.storagePath}
+                        alt={page.featuredImage.alt}
+                      />
+                    ) : (
+                      <div className="placeholder-image" style={{ height: '100%' }}>
+                        <span>📄</span>
+                      </div>
+                    )}
+                  </div>
                   <div className="card-content">
                     <h3>{page.title}</h3>
                     <p className="slug-text">/{page.slug}</p>
@@ -116,16 +136,17 @@ export const PublicHome = () => {
                 </Link>
               ))}
             </div>
-          </>
+          </section>
         )}
 
+        {/* ── Empty state ──────────────────────────────────────── */}
         {!loadError && pages.length === 0 && !frontPage && (
           <div className="empty-state">
             <p>No published pages yet. Check back soon!</p>
           </div>
         )}
       </main>
-      
+
       <footer className="site-footer">
         <p>&copy; {new Date().getFullYear()} FlareCMS. Built with passion.</p>
       </footer>
@@ -133,19 +154,31 @@ export const PublicHome = () => {
   );
 };
 
-// Helper for front page hero image
-const FrontPageHeroImage = ({ storagePath, alt }) => {
+/** Hero image for the featured front-page card */
+const HeroImage = ({ storagePath, alt }) => {
   const { url, error } = useImageUrl(storagePath);
-  if (error) return <div className="front-page-hero-image placeholder-image"><span className="placeholder-icon">🖼️</span></div>;
-  if (!url) return <div className="front-page-hero-image loading-image"></div>;
-  return <img src={url} alt={alt} />;
+  if (error) {
+    return (
+      <div className="placeholder-image" style={{ height: '100%' }}>
+        <span>🖼️</span>
+      </div>
+    );
+  }
+  if (!url) return <div className="loading-image" style={{ width: '100%', height: '100%' }} />;
+  return <img src={url} alt={alt || ''} />;
 };
 
-// Helper for card images to avoid breaking the layout while loading
-const RenderedCardImage = ({ storagePath, alt }) => {
+/** Card thumbnail image */
+const CardImage = ({ storagePath, alt }) => {
   const { url, error } = useImageUrl(storagePath);
-
-  if (error) return <div className="card-image placeholder-image"><span className="placeholder-icon">🖼️</span></div>;
-  if (!url) return <div className="card-image loading-image"></div>;
-  return <img src={url} alt={alt} />;
+  if (error) {
+    return (
+      <div className="placeholder-image" style={{ height: '100%' }}>
+        <span>🖼️</span>
+      </div>
+    );
+  }
+  if (!url) return <div className="loading-image" style={{ width: '100%', height: '100%' }} />;
+  return <img src={url} alt={alt || ''} />;
 };
+
