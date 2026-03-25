@@ -45,4 +45,5 @@ export {
   getDashboardStats,
   getRecentActivity,
   getTrafficSummary,
+  recordPageView,
 } from "./dashboard";

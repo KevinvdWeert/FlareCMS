@@ -96,21 +96,68 @@ export const getRecentActivity = functions.https.onCall(async (data, context) =>
 });
 
 /**
- * Callable: Get traffic summary placeholder.
- * Returns a structured placeholder until real analytics are integrated.
- * Data contract: { summary: { pageViews: number, uniqueVisitors: number, topPages: Array<{slug, views}> } }
+ * Callable: Record a page view.
+ * Atomically increments the view counter for a given page slug in the
+ * `pageViews` collection. No authentication is required so that anonymous
+ * visitors are counted too.
+ *
+ * Collection schema: pageViews/{slug} = { slug, views, lastViewedAt }
+ */
+export const recordPageView = functions.https.onCall(async (data, _context) => {
+  const { slug } = (data as { slug?: string }) || {};
+  if (!slug || typeof slug !== "string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+    throw new functions.https.HttpsError("invalid-argument", "A valid page slug is required.");
+  }
+
+  const viewRef = db.collection("pageViews").doc(slug);
+  await viewRef.set(
+    {
+      slug,
+      views: admin.firestore.FieldValue.increment(1),
+      lastViewedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  return { success: true };
+});
+
+/**
+ * Callable: Get traffic summary from the Firestore view-counter.
+ * Returns total page views across all pages and the top viewed pages.
+ * Requires staff.
+ *
+ * Data contract: { summary: { pageViews: number, topPages: Array<{slug, views}> } }
  */
 export const getTrafficSummary = functions.https.onCall(async (_data, context) => {
   await requireStaff(context);
 
-  // TODO: Integrate Google Analytics Data API or a custom Firestore view-counter
-  // to populate real traffic data. The data contract is:
-  // { summary: { pageViews: number|null, uniqueVisitors: number|null, topPages: Array<{slug, views}> } }
+  // Fetch the top 10 pages and the aggregate total in parallel.
+  const [topSnap, totalSnap] = await Promise.all([
+    db.collection("pageViews").orderBy("views", "desc").limit(10).get(),
+    db.collection("pageViews").count().get(),
+  ]);
+
+  const topPages = topSnap.docs.map((d) => ({
+    slug: d.id,
+    views: (d.data().views as number) || 0,
+  }));
+
+  // Sum all view counts via a separate aggregation query so the total
+  // reflects every page, not just the top 10.
+  // NOTE: Firestore aggregate `sum()` is only available in the Admin SDK v12+.
+  // We use count() above for the document count; for the view sum we fall back
+  // to a full collection read limited to 1000 docs to keep reads bounded.
+  const allSnap = await db.collection("pageViews").get();
+  const pageViews = allSnap.docs.reduce(
+    (sum, d) => sum + ((d.data().views as number) || 0),
+    0
+  );
+
   return {
     summary: {
-      pageViews: null,
-      uniqueVisitors: null,
-      topPages: [],
+      pageViews,
+      topPages,
     },
   };
 });

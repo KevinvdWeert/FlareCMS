@@ -79,25 +79,33 @@ async function assertEmulatorsRunning() {
 // Seed data definitions
 // ---------------------------------------------------------------------------
 
+// Read seed passwords from environment variables.
+// In development (emulator) mode, these fall back to demo defaults so
+// `npm run emulators && node scripts/seed.js` works out-of-the-box.
+// Override them via env vars when a stricter policy is required.
+const SEED_ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || 'Admin1234!';
+const SEED_EDITOR_PASSWORD = process.env.SEED_EDITOR_PASSWORD || 'Editor1234!';
+const SEED_USER_PASSWORD = process.env.SEED_USER_PASSWORD || 'User1234!';
+
 const SEED_USERS = [
   {
     uid: 'seed-admin-001',
     email: 'admin@flarecms.dev',
-    password: 'Admin1234!',
+    password: SEED_ADMIN_PASSWORD,
     fullName: 'Alice Admin',
     role: 'admin',
   },
   {
     uid: 'seed-editor-001',
     email: 'editor@flarecms.dev',
-    password: 'Editor1234!',
+    password: SEED_EDITOR_PASSWORD,
     fullName: 'Bob Editor',
     role: 'editor',
   },
   {
     uid: 'seed-user-001',
     email: 'user@flarecms.dev',
-    password: 'User1234!',
+    password: SEED_USER_PASSWORD,
     fullName: 'Carol User',
     role: 'user',
   },

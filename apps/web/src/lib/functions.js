@@ -357,7 +357,14 @@ export const callGetRecentActivity = (opts = {}) =>
   });
 
 /**
- * Gets traffic summary placeholder.
+ * Gets traffic summary from the Firestore view-counter.
  */
 export const callGetTrafficSummary = () =>
   httpsCallable(functions, 'getTrafficSummary')();
+
+/**
+ * Records a page view for the given slug. No authentication required.
+ * @param {string} slug - The page slug being viewed.
+ */
+export const callRecordPageView = (slug) =>
+  httpsCallable(functions, 'recordPageView')({ slug });

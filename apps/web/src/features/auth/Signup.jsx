@@ -24,7 +24,7 @@ export const Signup = () => {
       return;
     }
     if (!validatePassword(password)) {
-      setError('Password must be at least 8 chars with an uppercase letter and a number.');
+      setError('Password must be at least 8 characters and include an uppercase letter, a number, and a special character.');
       return;
     }
 

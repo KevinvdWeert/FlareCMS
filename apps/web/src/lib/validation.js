@@ -18,5 +18,10 @@ export const validateTitle = (title) => (title || '').trim().length >= 2;
 
 export const validatePassword = (password) => {
   const value = password || '';
-  return value.length >= 8 && /[A-Z]/.test(value) && /[0-9]/.test(value);
+  return (
+    value.length >= 8 &&
+    /[A-Z]/.test(value) &&
+    /[0-9]/.test(value) &&
+    /[^A-Za-z0-9]/.test(value)
+  );
 };

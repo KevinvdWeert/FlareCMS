@@ -15,22 +15,39 @@ const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const SERVICE_KEY_PATH = process.env.FIREBASE_SERVICE_ACCOUNT_KEY ||
   path.join(__dirname, 'serviceAccountKey.json');
 
+// Read demo-user passwords from environment variables.
+// For production runs, these MUST be set; for non-production the script will
+// still require them but you can supply any values you choose.
+const ADMIN_PASSWORD = process.env.INJECT_ADMIN_PASSWORD;
+const EDITOR_PASSWORD = process.env.INJECT_EDITOR_PASSWORD;
+const USER_PASSWORD = process.env.INJECT_USER_PASSWORD;
+
+if (!ADMIN_PASSWORD || !EDITOR_PASSWORD || !USER_PASSWORD) {
+  console.error(
+    'Error: INJECT_ADMIN_PASSWORD, INJECT_EDITOR_PASSWORD, and INJECT_USER_PASSWORD ' +
+    'environment variables must all be set before running this script.\n' +
+    'Example:\n' +
+    '  INJECT_ADMIN_PASSWORD=... INJECT_EDITOR_PASSWORD=... INJECT_USER_PASSWORD=... node scripts/inject_prod_users.js'
+  );
+  process.exit(1);
+}
+
 const USERS = [
   {
     email: 'admin@flarecms.dev',
-    password: 'Admin1234!',
+    password: ADMIN_PASSWORD,
     fullName: 'Admin Flare',
     role: 'admin',
   },
   {
     email: 'editor@flarecms.dev',
-    password: 'Editor1234!',
+    password: EDITOR_PASSWORD,
     fullName: 'Editor Flare',
     role: 'editor',
   },
   {
     email: 'user@flarecms.dev',
-    password: 'User1234!',
+    password: USER_PASSWORD,
     fullName: 'User Flare',
     role: 'user',
   },

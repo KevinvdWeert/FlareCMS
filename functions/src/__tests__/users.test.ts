@@ -8,6 +8,10 @@ import * as functions from "firebase-functions";
 // Import the callable handlers (mocked via moduleNameMapper).
 import { listUsers, setUserRole, acceptInvite } from "../users";
 
+// Test token constants – avoid magic strings in assertions.
+const INVALID_INVITE_TOKEN = process.env.TEST_INVALID_TOKEN ?? "test-invalid-token";
+const VALID_INVITE_TOKEN = process.env.TEST_VALID_TOKEN ?? "test-tok";
+
 const mockDb = admin.firestore() as any;
 const mockAuth = admin.auth() as any;
 
@@ -132,7 +136,7 @@ describe("acceptInvite", () => {
     mockDb.get.mockResolvedValueOnce({ empty: true, docs: [] });
 
     await expect(
-      call(acceptInvite, { token: "bad-token" }, makeCtx("uid-1", "user@example.com"))
+      call(acceptInvite, { token: INVALID_INVITE_TOKEN }, makeCtx("uid-1", "user@example.com"))
     ).rejects.toMatchObject({ code: "not-found" });
   });
 
@@ -142,7 +146,7 @@ describe("acceptInvite", () => {
       ref: { id: "inv-1", update: jest.fn().mockResolvedValue(undefined) },
       id: "inv-1",
       data: () => ({
-        token: "tok",
+        token: VALID_INVITE_TOKEN,
         status: "pending",
         email: "user@example.com",
         role: "editor",
@@ -152,7 +156,7 @@ describe("acceptInvite", () => {
     mockDb.get.mockResolvedValueOnce({ empty: false, docs: [inviteDoc] });
 
     await expect(
-      call(acceptInvite, { token: "tok" }, makeCtx("uid-1", "user@example.com"))
+      call(acceptInvite, { token: VALID_INVITE_TOKEN }, makeCtx("uid-1", "user@example.com"))
     ).rejects.toMatchObject({ code: "failed-precondition" });
   });
 
@@ -162,7 +166,7 @@ describe("acceptInvite", () => {
       ref: { id: "inv-1", update: jest.fn() },
       id: "inv-1",
       data: () => ({
-        token: "tok",
+        token: VALID_INVITE_TOKEN,
         status: "pending",
         email: "other@example.com",
         role: "editor",
@@ -172,7 +176,7 @@ describe("acceptInvite", () => {
     mockDb.get.mockResolvedValueOnce({ empty: false, docs: [inviteDoc] });
 
     await expect(
-      call(acceptInvite, { token: "tok" }, makeCtx("uid-1", "wrong@example.com"))
+      call(acceptInvite, { token: VALID_INVITE_TOKEN }, makeCtx("uid-1", "wrong@example.com"))
     ).rejects.toMatchObject({ code: "permission-denied" });
   });
 });

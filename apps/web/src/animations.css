@@ -1,0 +1,26 @@
+/*
+ * Shared CSS keyframe animations for FlareCMS.
+ *
+ * Import this file in any component or stylesheet that needs these animations.
+ * Keeping keyframes in a single file prevents duplicate @keyframes definitions
+ * and makes it easy to update timing or easing globally.
+ */
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pubFadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

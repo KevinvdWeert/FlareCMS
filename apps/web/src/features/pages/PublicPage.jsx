@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { getPageBySlug } from '../../lib/firestore';
 import { BlockRenderer } from '../blocks/BlockRenderer';
 import { useImageUrl } from '../../hooks/useImageUrl';
+import { callRecordPageView } from '../../lib/functions';
 
 export const PublicPage = () => {
   const { slug } = useParams();
@@ -22,6 +23,8 @@ export const PublicPage = () => {
           )
         ]);
         setPage(data);
+        // Record a page view after successfully loading the page.
+        callRecordPageView(slug).catch((err) => console.debug('View tracking failed:', err));
       } catch (error) {
         console.error('Failed to load page:', error);
         setPage(null);
