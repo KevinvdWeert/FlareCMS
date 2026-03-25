@@ -3,44 +3,9 @@ import * as admin from "firebase-admin";
 import { createLogger } from "./lib/logger";
 import { ErrorMessages } from "./lib/errors";
 import { validateSlug, validateTitle } from "./lib/validation";
+import { writeActivityLog, requireStaff } from "./lib/db";
 
 const db = admin.firestore();
-
-/**
- * Writes a structured entry to the activityLog collection.
- */
-async function writeActivityLog(entry: {
-  actorId: string;
-  actorEmail?: string | null;
-  action: string;
-  resourceType: string;
-  resourceId?: string;
-  meta?: Record<string, unknown>;
-}): Promise<void> {
-  await db.collection("activityLog").add({
-    ...entry,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
-}
-
-/** Checks if the caller is staff (admin or editor). */
-async function requireStaff(
-  context: functions.https.CallableContext
-): Promise<admin.firestore.DocumentData> {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", ErrorMessages.UNAUTHENTICATED);
-  }
-  const doc = await db.collection("users").doc(context.auth.uid).get();
-  if (!doc.exists) {
-    throw new functions.https.HttpsError("permission-denied", ErrorMessages.FORBIDDEN);
-  }
-  const data = doc.data()!;
-  const role = data.role as string;
-  if (role !== "admin" && role !== "editor") {
-    throw new functions.https.HttpsError("permission-denied", ErrorMessages.FORBIDDEN);
-  }
-  return data;
-}
 
 /**
  * Callable: Check whether a slug is taken (case-insensitive, excludes self).
@@ -68,7 +33,7 @@ export const checkSlug = functions.https.onCall(async (data, context) => {
  */
 export const createPage = functions.https.onCall(async (data, context) => {
   const log = createLogger();
-  const callerData = await requireStaff(context);
+  await requireStaff(context);
   const uid = context.auth!.uid;
 
   const { title, slug, blocks = [], status = "draft", featuredImage = null } = (data as {
@@ -313,7 +278,7 @@ export const publishPage = functions.https.onCall(async (data, context) => {
  */
 export const unpublishPage = functions.https.onCall(async (data, context) => {
   const log = createLogger();
-  const callerData = await requireStaff(context);
+  await requireStaff(context);
   const uid = context.auth!.uid;
 
   const { id } = (data as { id?: string }) || {};
