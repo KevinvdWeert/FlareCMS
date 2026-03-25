@@ -4,6 +4,7 @@ import { getPageById, createPage, updatePage, isSlugTaken } from '../../lib/fire
 import { uploadImageToServer } from '../../lib/storage';
 import { callRegisterMediaAsset } from '../../lib/functions';
 import { useAuth } from '../auth/useAuth';
+import { useImageUrl } from '../../hooks/useImageUrl';
 import { BlockEditor } from '../blocks/BlockEditor';
 import { ArrowLeft, Save, Send } from 'lucide-react';
 import { validateSlug, validateTitle } from '../../lib/validation';
@@ -24,6 +25,10 @@ export const PageEditor = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [uploadingCover, setUploadingCover] = useState(false);
+  
+  // Resolve featured image path to displayable URL
+  const displayImagePath = featuredImagePath.startsWith('/') ? featuredImagePath : `/${featuredImagePath}`;
+  const { url: displayImageUrl } = useImageUrl(displayImagePath);
 
   useEffect(() => {
     if (id) {
@@ -230,33 +235,72 @@ export const PageEditor = () => {
             <input type="text" value={slug} onChange={(e) => setSlug(e.target.value)} className="admin-editor-input" />
           </label>
 
-          <div className="admin-editor-upload admin-editor-field-full">
-            <strong>Cover Image</strong>
-            {featuredImagePath && (
-              <div className="admin-editor-current-image">
-                <img
-                  src={featuredImagePath}
-                  alt="Cover"
-                  style={{ maxWidth: '100%', maxHeight: '120px', objectFit: 'cover', borderRadius: '4px', marginBottom: '6px' }}
-                />
-                <p style={{ fontSize: '12px', wordBreak: 'break-all' }}>{featuredImagePath}</p>
-                <button onClick={() => setFeaturedImagePath('')} className="admin-editor-remove" type="button">Remove</button>
-              </div>
-            )}
-            <div className="admin-editor-upload-input-wrap">
-              <input type="file" accept="image/*" onChange={handleFeaturedImageUpload} disabled={saving || uploadingCover} />
-              <p className="admin-muted-text" style={{ marginTop: '8px' }}>
-                {uploadingCover ? 'Uploading cover image...' : (featuredImagePath ? `Saved path: /${featuredImagePath}` : 'No cover image uploaded yet.')}
-              </p>
+          <div className="admin-editor-cover-section">
+            <h3 className="admin-editor-cover-heading">Cover Image</h3>
+            
+            {/* Cover Image Container */}
+            <div 
+              className={`admin-editor-cover-container ${featuredImagePath ? '' : 'admin-editor-cover-empty'}`}
+              onClick={() => !featuredImagePath && document.getElementById('featured-image-input')?.click()}
+            >
+              {featuredImagePath && displayImageUrl ? (
+                <>
+                  <img
+                    src={displayImageUrl}
+                    alt={featuredImageAlt || 'Cover'}
+                    className="admin-editor-cover-image"
+                  />
+                  <div className="admin-editor-cover-overlay">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        document.getElementById('featured-image-input')?.click();
+                      }}
+                      className="admin-editor-cover-replace-btn"
+                    >
+                      Replace Asset
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="admin-editor-cover-placeholder">
+                  <p className="admin-muted-text">Click to upload cover image</p>
+                  {uploadingCover && <p className="admin-editor-uploading-text">Uploading...</p>}
+                </div>
+              )}
+            </div>
+
+            {/* Hidden File Input */}
+            <input
+              id="featured-image-input"
+              type="file"
+              accept="image/*"
+              onChange={handleFeaturedImageUpload}
+              disabled={saving || uploadingCover}
+              style={{ display: 'none' }}
+            />
+
+            {/* Alt Text Input */}
+            <label className="admin-editor-field" style={{ marginTop: '12px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b' }}>
+                Alt Text
+              </span>
               <input
                 type="text"
                 value={featuredImageAlt || ''}
                 onChange={(e) => setFeaturedImageAlt(e.target.value)}
-                placeholder="Cover image alt text"
+                placeholder="Describe the cover image"
                 className="admin-editor-input"
-                style={{ marginTop: '8px' }}
               />
-            </div>
+            </label>
+
+            {/* Status Text */}
+            {featuredImagePath && (
+              <p className="admin-editor-cover-status">
+                <strong>Saved:</strong> {featuredImagePath}
+              </p>
+            )}
           </div>
         </aside>
       </div>

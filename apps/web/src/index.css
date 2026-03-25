@@ -1262,6 +1262,119 @@ body {
   font-weight: 600;
 }
 
+/* Featured Image / Cover Section */
+.admin-editor-cover-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.admin-editor-cover-heading {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #334155;
+  margin: 0;
+}
+
+.admin-editor-cover-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  background: #e9e9dd;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid #d4c4b7;
+  transition: all 0.2s ease;
+}
+
+.admin-editor-cover-container:hover {
+  border-color: #c2b5a9;
+}
+
+.admin-editor-cover-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.admin-editor-cover-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(125, 86, 47, 0.2);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-editor-cover-container:hover .admin-editor-cover-overlay {
+  opacity: 1;
+}
+
+.admin-editor-cover-replace-btn {
+  background: #ffffff;
+  color: #7a542c;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(27, 28, 21, 0.15);
+}
+
+.admin-editor-cover-replace-btn:hover {
+  background: #f8f7f3;
+  box-shadow: 0 6px 16px rgba(27, 28, 21, 0.2);
+}
+
+.admin-editor-cover-empty {
+  background: #f5f4e8;
+  border: 1px dashed #d4c4b7;
+}
+
+.admin-editor-cover-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-editor-uploading-text {
+  font-size: 0.875rem;
+  color: #7a542c;
+  font-weight: 600;
+  margin: 0;
+}
+
+.admin-editor-cover-status {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin: 0;
+  word-break: break-all;
+  font-family: 'Monaco', 'Courier New', monospace;
+  background: #f5f4e8;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.admin-editor-cover-status strong {
+  color: #334155;
+}
+
 .block-toolbar {
   display: flex;
   flex-wrap: wrap;
