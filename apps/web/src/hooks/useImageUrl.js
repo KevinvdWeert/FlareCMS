@@ -27,17 +27,38 @@ export const useImageUrl = (imagePath) => {
       return;
     }
 
+    const raw = String(imagePath).trim();
+    if (!raw) {
+      setUrl(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     // Relative web path — use directly
-    if (imagePath.startsWith('/')) {
-      setUrl(imagePath);
+    if (raw.startsWith('/')) {
+      setUrl(raw);
       setLoading(false);
       setError(null);
       return;
     }
 
     // Absolute HTTP/HTTPS URL — use directly
-    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-      setUrl(imagePath);
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      setUrl(raw);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    // Server-relative path without leading slash (e.g. images/uuid.jpg).
+    // Normalize to /images/uuid.jpg.
+    if (
+      !raw.startsWith('gs://') &&
+      !raw.startsWith('data:') &&
+      (/^[a-z0-9_\-/]+\.[a-z0-9]+$/i.test(raw) || raw.includes('/'))
+    ) {
+      setUrl(`/${raw.replace(/^\/+/, '')}`);
       setLoading(false);
       setError(null);
       return;
@@ -45,7 +66,7 @@ export const useImageUrl = (imagePath) => {
 
     // Legacy Firebase Storage path (gs://… or old storagePath like `pages/…`)
     // Cannot be resolved without the Storage SDK; show a graceful fallback.
-    console.warn('[useImageUrl] Legacy storage path cannot be resolved:', imagePath);
+    console.warn('[useImageUrl] Legacy storage path cannot be resolved:', raw);
     setUrl(null);
     setLoading(false);
     setError(new Error('Legacy storage path — image not available.'));

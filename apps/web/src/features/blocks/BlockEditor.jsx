@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { uploadImageToServer } from '../../lib/storage';
 import { Type, Image as ImageIcon, Heading1, Trash, ArrowUp, ArrowDown } from 'lucide-react';
 
 export const BlockEditor = ({ blocks, setBlocks }) => {
   const [pathError, setPathError] = useState('');
+  const [uploadingBlockId, setUploadingBlockId] = useState('');
 
   const addBlock = (type) => {
     const newBlock = { id: uuidv4(), type };
@@ -60,6 +62,30 @@ export const BlockEditor = ({ blocks, setBlocks }) => {
       newBlocks[index].alt = normalized.split('/').pop() || '';
     }
     setBlocks(newBlocks);
+  };
+
+  const handleImageUpload = async (index, file) => {
+    setPathError('');
+    if (!file) return;
+    const blockId = blocks[index]?.id;
+    setUploadingBlockId(blockId || '');
+    try {
+      const uploaded = await uploadImageToServer(file);
+      const normalizedPath = String(uploaded.path || '').replace(/^\//, '');
+      const newBlocks = [...blocks];
+      newBlocks[index].storagePath = normalizedPath;
+      newBlocks[index].imagePath = normalizedPath;
+      newBlocks[index].imageId = '';
+      if (!newBlocks[index].alt) {
+        newBlocks[index].alt = uploaded.fileName || file.name || '';
+      }
+      setBlocks(newBlocks);
+    } catch (err) {
+      console.error('Block image upload failed:', err);
+      setPathError(err?.message || 'Image upload failed.');
+    } finally {
+      setUploadingBlockId('');
+    }
   };
 
   return (
@@ -126,26 +152,31 @@ export const BlockEditor = ({ blocks, setBlocks }) => {
               <div className="block-form-column">
                 <input
                   className="block-input block-input-grow"
-                  type="text"
-                  value={block.storagePath || ''}
-                  onChange={(e) => updateBlock(index, 'storagePath', e.target.value)}
-                  onBlur={(e) => handleImagePathSet(index, e.target.value)}
-                  placeholder="Relative image path, e.g. /media/article/hero.jpg"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    handleImageUpload(index, e.target.files?.[0]);
+                    e.target.value = '';
+                  }}
+                  disabled={uploadingBlockId === block.id}
                 />
+                {uploadingBlockId === block.id && (
+                  <p className="admin-muted-text">Uploading image...</p>
+                )}
                 {block.storagePath && (
                   <div className="block-image-meta">
                     <img
-                      src={block.imagePath}
+                      src={`/${block.storagePath.replace(/^\/+/, '')}`}
                       alt={block.alt || ''}
                       style={{ maxWidth: '100%', maxHeight: '120px', objectFit: 'cover', borderRadius: '4px', marginBottom: '6px' }}
                     />
-                    <p><strong>Path:</strong> {block.imagePath}</p>
+                    <p><strong>Path:</strong> /{block.storagePath}</p>
                     <button
                       type="button"
                       className="block-icon-btn"
                       onClick={() => {
                         const newBlocks = [...blocks];
-                        newBlocks[index] = { ...newBlocks[index], imageId: '', imagePath: '', alt: '' };
+                        newBlocks[index] = { ...newBlocks[index], imageId: '', imagePath: '', storagePath: '', alt: '' };
                         setBlocks(newBlocks);
                       }}
                     >

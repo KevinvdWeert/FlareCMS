@@ -1,6 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { CloudUpload, Grid3X3, List, Tag, Trash, RefreshCw } from 'lucide-react';
-import { resolveMediaUrl } from '../../lib/storage';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Check,
+  CloudUpload,
+  Download,
+  Filter,
+  Grid3X3,
+  List,
+  Pencil,
+  Tag,
+  Trash,
+} from 'lucide-react';
+import { resolveMediaUrl, uploadImageToServer } from '../../lib/storage';
 import { callRegisterMediaAsset, callListMediaAssets, callDeleteMediaAsset } from '../../lib/functions';
 import { parseFirestoreTimestamp } from '../../lib/firestore';
 
@@ -19,43 +29,46 @@ const formatBytes = (bytes) => {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 };
 
-const guessMimeType = (path) => {
-  const lower = String(path || '').toLowerCase();
-  if (lower.endsWith('.png')) return 'image/png';
-  if (lower.endsWith('.gif')) return 'image/gif';
-  if (lower.endsWith('.webp')) return 'image/webp';
-  if (lower.endsWith('.svg')) return 'image/svg+xml';
-  return 'image/jpeg';
-};
-
 export const MediaManager = () => {
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [cursor, setCursor] = useState(null);
+  const [lastId, setLastId] = useState(null);
   const [hasMore, setHasMore] = useState(false);
+  const [sortMode, setSortMode] = useState('newest');
+  const [selectedIds, setSelectedIds] = useState([]);
   const [error, setError] = useState('');
-  const [savingPath, setSavingPath] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [selected, setSelected] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
   const [deletingId, setDeletingId] = useState('');
-  const [pathInput, setPathInput] = useState('');
-  const [nameInput, setNameInput] = useState('');
+  const [replacing, setReplacing] = useState(false);
+  const fileInputRef = useRef(null);
+  const replaceInputRef = useRef(null);
 
   const loadAssets = async ({ reset = false } = {}) => {
     setLoading(true);
     setError('');
     try {
-      const result = await getImagesPaginated({
+      const result = await callListMediaAssets({
         pageSize: 20,
-        cursor: reset ? null : cursor,
+        startAfterId: reset ? null : lastId,
       });
-      setAssets((prev) => (reset ? result.items : [...prev, ...result.items]));
-      setCursor(result.nextCursor);
-      setHasMore(result.hasMore);
+      const { assets: newAssets = [], hasMore: more = false } = result.data || {};
+      setAssets((prev) => (reset ? newAssets : [...prev, ...newAssets]));
+      setHasMore(more);
+      if (reset) {
+        setLastId(null);
+        setSelectedIds([]);
+      }
+      if (newAssets.length > 0) {
+        setLastId(newAssets[newAssets.length - 1].id);
+      }
+      return reset ? newAssets : null;
     } catch (err) {
       console.error('Failed to load media assets:', err);
       setError('Failed to load media assets. ' + (err?.message || ''));
+      return null;
     } finally {
       setLoading(false);
     }
@@ -65,37 +78,43 @@ export const MediaManager = () => {
     loadAssets({ reset: true });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleAddPathAsset = async () => {
+  useEffect(() => {
+    if (!selected && assets.length > 0) {
+      setSelected(assets[0]);
+      return;
+    }
+    if (selected && !assets.some((a) => a.id === selected.id)) {
+      setSelected(assets[0] || null);
+    }
+  }, [assets, selected]);
+
+  const handleFileUpload = async (file) => {
     setUploadError('');
-    const relativePath = (pathInput || '').trim();
-    if (!relativePath) {
-      setUploadError('Relative image path is required. Example: /media/home/hero.jpg');
+    if (!file) {
       return;
     }
 
-    const normalizedPath = relativePath.startsWith('/')
-      ? relativePath.slice(1)
-      : relativePath;
-
-    const fileName = (nameInput || normalizedPath.split('/').pop() || 'image').trim();
-    const mimeType = guessMimeType(normalizedPath);
-
-    setSavingPath(true);
+    setUploading(true);
     try {
+      const uploaded = await uploadImageToServer(file);
+      const storagePath = String(uploaded.path || '').replace(/^\//, '');
+
       await callRegisterMediaAsset({
-        storagePath: normalizedPath,
-        fileName,
-        mimeType,
-        sizeBytes: null,
+        storagePath,
+        fileName: uploaded.fileName || file.name,
+        mimeType: uploaded.mimeType || file.type || 'image/jpeg',
+        sizeBytes: uploaded.sizeBytes || file.size || null,
       });
-      setPathInput('');
-      setNameInput('');
+
       await loadAssets({ reset: true });
     } catch (err) {
-      console.error('Register path asset error:', err);
-      setUploadError(err?.message || 'Failed to save image path.');
+      console.error('Upload error:', err);
+      setUploadError(err?.message || 'Failed to upload image.');
     } finally {
-      setSavingPath(false);
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -104,8 +123,9 @@ export const MediaManager = () => {
     setDeletingId(asset.id);
     setError('');
     try {
-      await deleteImageRecord(asset.id);
+      await callDeleteMediaAsset(asset.id);
       setAssets((prev) => prev.filter((a) => a.id !== asset.id));
+      setSelectedIds((prev) => prev.filter((id) => id !== asset.id));
       if (selected?.id === asset.id) {
         setSelected(null);
       }
@@ -119,12 +139,92 @@ export const MediaManager = () => {
 
   const handleSelect = async (asset) => {
     setSelected(asset);
-    setPreviewUrl(resolveMediaUrl(asset.storagePath));
+  };
+
+  const handleReplaceSelected = async (file) => {
+    if (!file || !selected) return;
+    setReplacing(true);
+    setError('');
+    try {
+      const uploaded = await uploadImageToServer(file);
+      const storagePath = String(uploaded.path || '').replace(/^\//, '');
+      const registered = await callRegisterMediaAsset({
+        storagePath,
+        fileName: uploaded.fileName || file.name,
+        mimeType: uploaded.mimeType || file.type || 'image/jpeg',
+        sizeBytes: uploaded.sizeBytes || file.size || null,
+      });
+
+      await callDeleteMediaAsset(selected.id);
+      const refreshed = await loadAssets({ reset: true });
+      const newId = registered?.data?.id;
+      if (newId && Array.isArray(refreshed)) {
+        const replacement = refreshed.find((asset) => asset.id === newId);
+        if (replacement) {
+          setSelected(replacement);
+        }
+      }
+    } catch (err) {
+      console.error('Replace file error:', err);
+      setError(err?.message || 'Failed to replace file.');
+    } finally {
+      setReplacing(false);
+      if (replaceInputRef.current) {
+        replaceInputRef.current.value = '';
+      }
+    }
+  };
+
+  const toggleSelect = (id, checked) => {
+    setSelectedIds((prev) => {
+      if (checked) {
+        return prev.includes(id) ? prev : [...prev, id];
+      }
+      return prev.filter((item) => item !== id);
+    });
+  };
+
+  const allVisibleSelected = assets.length > 0 && selectedIds.length === assets.length;
+
+  const toggleSelectAll = (checked) => {
+    if (checked) {
+      setSelectedIds(assets.map((a) => a.id));
+      return;
+    }
+    setSelectedIds([]);
+  };
+
+  const sortedAssets = [...assets].sort((a, b) => {
+    const aTime = parseFirestoreTimestamp(a.createdAt).getTime();
+    const bTime = parseFirestoreTimestamp(b.createdAt).getTime();
+    if (sortMode === 'oldest') {
+      return aTime - bTime;
+    }
+    return bTime - aTime;
+  });
+
+  const selectedCount = selectedIds.length;
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    if (!window.confirm(`Delete ${selectedIds.length} selected asset(s)? This cannot be undone.`)) return;
+    setError('');
+    try {
+      await Promise.all(selectedIds.map((id) => callDeleteMediaAsset(id)));
+      setAssets((prev) => prev.filter((a) => !selectedIds.includes(a.id)));
+      if (selected && selectedIds.includes(selected.id)) {
+        setSelected(null);
+      }
+      setSelectedIds([]);
+    } catch (err) {
+      console.error('Batch delete error:', err);
+      setError(err?.message || 'Failed to delete one or more assets.');
+    }
   };
 
   return (
     <div className="admin-section media-screen">
-      <section className="editorial-masthead">
+      <section className="editorial-masthead media-replica-masthead">
         <div>
           <span className="editorial-kicker">Archive 2024</span>
           <h1>
@@ -132,30 +232,55 @@ export const MediaManager = () => {
           </h1>
           <p>Browse, organize, and reuse your visual assets across editorial campaigns.</p>
         </div>
-        <div className="editorial-masthead-card">
-          <CloudUpload size={28} />
-          <strong>{assets.length}</strong>
-          <span>Loaded assets</span>
+        <div className="media-masthead-actions">
+          <div className="media-view-toggle">
+            <button type="button" className={viewMode === 'grid' ? 'is-active' : ''} onClick={() => setViewMode('grid')} aria-label="Grid view">
+              <Grid3X3 size={16} />
+            </button>
+            <button type="button" className={viewMode === 'list' ? 'is-active' : ''} onClick={() => setViewMode('list')} aria-label="List view">
+              <List size={16} />
+            </button>
+          </div>
         </div>
       </section>
 
-      <section className="media-toolbar admin-surface">
+      <section className="media-toolbar">
         <div className="media-toolbar-left">
-          <small>{assets.length} asset{assets.length !== 1 ? 's' : ''} loaded</small>
+          <label className="media-select-all">
+            <input
+              type="checkbox"
+              checked={allVisibleSelected}
+              onChange={(e) => toggleSelectAll(e.target.checked)}
+            />
+            <span>Select All</span>
+          </label>
+          <small>{assets.length} Items Total</small>
         </div>
         <div className="media-toolbar-right">
-          <button type="button" className="admin-button-secondary" onClick={() => loadAssets({ reset: true })} disabled={loading}>
-            <RefreshCw size={15} />
-            <span>Refresh</span>
+          <button type="button" className="media-batch-btn" onClick={() => setSortMode((prev) => (prev === 'newest' ? 'oldest' : 'newest'))}>
+            <Filter size={14} />
+            <span>Sort</span>
           </button>
-          <div className="media-view-toggle">
-            <button type="button" className={viewMode === 'grid' ? 'is-active' : ''} onClick={() => setViewMode('grid')} aria-label="Grid view">
-              <Grid3X3 size={15} />
-            </button>
-            <button type="button" className={viewMode === 'list' ? 'is-active' : ''} onClick={() => setViewMode('list')} aria-label="List view">
-              <List size={15} />
-            </button>
-          </div>
+          <button type="button" className="media-batch-btn" onClick={() => loadAssets({ reset: true })} disabled={loading}>
+            <Download size={14} />
+            <span>Batch Export</span>
+          </button>
+          <button type="button" className="media-batch-btn danger" onClick={handleDeleteSelected} disabled={selectedCount === 0}>
+            <Trash size={14} />
+            <span>Delete</span>
+          </button>
+          <label className="media-upload-btn" style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}>
+            <CloudUpload size={15} />
+            <span>{uploading ? 'Uploading...' : 'Upload Asset'}</span>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={(e) => handleFileUpload(e.target.files?.[0])}
+              disabled={uploading}
+              style={{ display: 'none' }}
+            />
+          </label>
         </div>
       </section>
 
@@ -163,115 +288,89 @@ export const MediaManager = () => {
         <div className="admin-editor-error">{error || uploadError}</div>
       )}
 
-      <section className="media-toolbar admin-surface" style={{ marginTop: '-6px' }}>
-        <div className="media-toolbar-left" style={{ flex: 1 }}>
-          <input
-            type="text"
-            className="admin-input"
-            placeholder="Relative image path, e.g. /media/home/hero.jpg"
-            value={pathInput}
-            onChange={(e) => setPathInput(e.target.value)}
-            style={{ width: '100%' }}
-          />
-        </div>
-        <div className="media-toolbar-right" style={{ flex: 1 }}>
-          <input
-            type="text"
-            className="admin-input"
-            placeholder="Display name (optional)"
-            value={nameInput}
-            onChange={(e) => setNameInput(e.target.value)}
-            style={{ width: '100%' }}
-          />
-          <button type="button" className="admin-button-primary" onClick={handleAddPathAsset} disabled={savingPath}>
-            <CloudUpload size={15} />
-            <span>{savingPath ? 'Saving...' : 'Add Path'}</span>
-          </button>
-        </div>
-      </section>
-
       <section className="media-layout">
-        <div className={viewMode === 'grid' ? 'media-grid' : 'media-list'}>
-          {loading && assets.length === 0 ? (
-            <p className="admin-muted-text">Loading assets…</p>
-          ) : assets.length === 0 ? (
-            <p className="admin-muted-text">No assets yet. Upload your first image.</p>
-          ) : (
-            assets.map((asset) => (
-              <article
-                key={asset.id}
-                className={`admin-surface media-card ${selected?.id === asset.id ? 'is-active' : ''}`}
-                onClick={() => setSelected(asset)}
-                style={{ cursor: 'pointer' }}
-              >
-                <div className="media-card-art">
-                  {asset.path ? (
-                    <img src={asset.path} alt={asset.fileName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <span>{(asset.fileName || 'A').charAt(0).toUpperCase()}</span>
-                  )}
-                </div>
-                <div className="media-card-meta">
-                  <p title={asset.fileName}>{asset.fileName}</p>
-                  <small>
-                    {formatBytes(asset.sizeBytes)}
-                    {asset.mimeType ? ` • ${MIME_LABELS[asset.mimeType] || asset.mimeType}` : ''}
-                  </small>
-                </div>
-                <button
-                  type="button"
-                  className="admin-icon-action delete"
-                  aria-label="Delete asset"
-                  disabled={deletingId === asset.id}
-                  onClick={(e) => { e.stopPropagation(); handleDelete(asset); }}
-                  style={{ marginLeft: 'auto', flexShrink: 0 }}
-                >
-                  <Trash size={14} />
-                </button>
-              </article>
-            ))
-          )}
+        <div className="media-main-column">
+          <div className={viewMode === 'grid' ? 'media-grid' : 'media-grid media-grid-list'}>
+            {loading && assets.length === 0 ? (
+              <p className="admin-muted-text">Loading assets…</p>
+            ) : assets.length === 0 ? (
+              <p className="admin-muted-text">No assets yet. Upload your first image.</p>
+            ) : (
+              sortedAssets.map((asset) => {
+                const assetUrl = resolveMediaUrl(asset.path || asset.storagePath);
+                const isActive = selected?.id === asset.id;
+                const isChecked = selectedIds.includes(asset.id);
+                return (
+                  <article
+                    key={asset.id}
+                    className={`media-tile ${isActive ? 'is-active' : ''}`}
+                    onClick={() => handleSelect(asset)}
+                  >
+                    <div className="media-tile-frame">
+                      {assetUrl ? (
+                        <img src={assetUrl} alt={asset.fileName} />
+                      ) : (
+                        <span>{(asset.fileName || 'A').charAt(0).toUpperCase()}</span>
+                      )}
 
-          {!loading && (
-            <article className="admin-surface media-card media-card-add">
-              <button
-                type="button"
-                onClick={handleAddPathAsset}
-                disabled={savingPath}
-                style={{ border: 0, background: 'transparent', display: 'contents', cursor: 'pointer' }}
-              >
-                <div className="media-card-art">
-                  <CloudUpload size={20} />
-                </div>
-                <div className="media-card-meta">
+                      <div className="media-tile-overlay">
+                        <p>{asset.fileName}</p>
+                        <small>
+                          {formatBytes(asset.sizeBytes)}
+                          {asset.mimeType ? ` • ${MIME_LABELS[asset.mimeType] || asset.mimeType}` : ''}
+                        </small>
+                      </div>
+
+                      <label className="media-tile-checkbox" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => toggleSelect(asset.id, e.target.checked)}
+                        />
+                        <span>{isChecked ? <Check size={11} /> : null}</span>
+                      </label>
+
+                      {isActive && (
+                        <div className="media-tile-selected">
+                          <Check size={11} />
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                );
+              })
+            )}
+
+            {!loading && (
+              <article className="media-tile media-tile-add">
+                <label className="media-tile-add-label" style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}>
+                  <CloudUpload size={26} />
                   <p>Add Asset</p>
-                  <small>Save relative path</small>
-                </div>
-              </button>
-            </article>
-          )}
-        </div>
-
-        {hasMore && (
-          <div className="admin-pagination-row">
-            <button
-              type="button"
-              className="admin-button-secondary"
-              onClick={() => loadAssets()}
-              disabled={loading}
-            >
-              {loading ? 'Loading…' : 'Load more'}
-            </button>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleFileUpload(e.target.files?.[0])}
+                    disabled={uploading}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+              </article>
+            )}
           </div>
-        )}
+        </div>
 
         <aside className="admin-surface media-side-panel">
-          <h3>Asset Details</h3>
+          <div className="media-side-panel-head">
+            <h3>Asset Details</h3>
+            <button type="button" className="media-side-edit" aria-label="Edit asset metadata" disabled={!selected}>
+              <Pencil size={14} />
+            </button>
+          </div>
           {selected ? (
             <>
-              {selected.path ? (
+              {resolveMediaUrl(selected.path || selected.storagePath) ? (
                 <div className="media-side-preview" style={{ overflow: 'hidden' }}>
-                  <img src={selected.path} alt={selected.fileName} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  <img src={resolveMediaUrl(selected.path || selected.storagePath)} alt={selected.fileName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
               ) : (
                 <div className="media-side-preview">
@@ -280,26 +379,26 @@ export const MediaManager = () => {
               )}
               <h4>{selected.fileName}</h4>
               <p className="media-side-meta">
-                Uploaded {selected.createdAt
+                Modified {selected.createdAt
                   ? parseFirestoreTimestamp(selected.createdAt).toLocaleDateString()
                   : '—'}
               </p>
               <div className="media-side-specs">
                 <div>
+                  <span>Dimensions</span>
+                  <b>{selected.dimensions?.width && selected.dimensions?.height ? `${selected.dimensions.width} x ${selected.dimensions.height} px` : '—'}</b>
+                </div>
+                <div>
+                  <span>File Type</span>
+                  <b>{MIME_LABELS[selected.mimeType] || selected.mimeType || '—'}</b>
+                </div>
+                <div>
                   <span>Size</span>
                   <b>{formatBytes(selected.sizeBytes)}</b>
                 </div>
                 <div>
-                  <span>Type</span>
-                  <b>{MIME_LABELS[selected.mimeType] || selected.mimeType || '—'}</b>
-                </div>
-                <div>
-                  <span>Path</span>
-                  <b style={{ wordBreak: 'break-all', fontSize: '11px' }}>{selected.path || '—'}</b>
-                </div>
-                <div>
-                  <span>Used in</span>
-                  <b>{(selected.usedInPages || []).length} page{(selected.usedInPages || []).length !== 1 ? 's' : ''}</b>
+                  <span>Usage</span>
+                  <b>{(selected.usedInPages || []).length > 0 ? `${(selected.usedInPages || []).length} pages` : 'Not attached'}</b>
                 </div>
               </div>
               {(selected.tags || []).length > 0 && (
@@ -312,25 +411,66 @@ export const MediaManager = () => {
                     {selected.tags.map((t) => (
                       <span key={t}>{t}</span>
                     ))}
+                    <button type="button" className="media-tag-add">+ Add Tag</button>
                   </div>
                 </div>
               )}
               <div className="media-side-actions">
                 <button
                   type="button"
-                  className="admin-button-primary"
-                  disabled={deletingId === selected.id}
-                  onClick={() => handleDelete(selected)}
+                  className="admin-button-secondary"
+                  onClick={() => navigator.clipboard.writeText(selected.path || selected.storagePath || '')}
                 >
-                  {deletingId === selected.id ? 'Deleting…' : 'Delete Asset'}
+                  Open Editor
                 </button>
+                <label className="admin-button-primary media-replace-btn" style={{ cursor: replacing ? 'not-allowed' : 'pointer' }}>
+                  {replacing ? 'Replacing…' : 'Replace File'}
+                  <input
+                    ref={replaceInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleReplaceSelected(e.target.files?.[0])}
+                    disabled={replacing || deletingId === selected.id}
+                    style={{ display: 'none' }}
+                  />
+                </label>
               </div>
+              <button
+                type="button"
+                className="media-delete-link"
+                disabled={deletingId === selected.id}
+                onClick={() => handleDelete(selected)}
+              >
+                {deletingId === selected.id ? 'Deleting…' : 'Delete Asset'}
+              </button>
             </>
           ) : (
             <p className="admin-muted-text">Select an asset to see details.</p>
           )}
         </aside>
       </section>
+
+      <footer className="media-footer">
+        <div className="media-footer-pages">
+          <button type="button">Previous</button>
+          <div>
+            <button type="button" className="is-active">01</button>
+            <button type="button">02</button>
+            <button type="button">03</button>
+            <span>...</span>
+            <button type="button">12</button>
+          </div>
+          <button type="button" onClick={() => hasMore && loadAssets()} disabled={!hasMore || loading}>Next</button>
+        </div>
+        <div className="media-footer-density">
+          <span>Show</span>
+          <select defaultValue="24 per page">
+            <option>24 per page</option>
+            <option>48 per page</option>
+            <option>96 per page</option>
+          </select>
+        </div>
+      </footer>
     </div>
   );
 };

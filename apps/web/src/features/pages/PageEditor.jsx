@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPageById, createPage, updatePage, isSlugTaken } from '../../lib/firestore';
+import { uploadImageToServer } from '../../lib/storage';
+import { callRegisterMediaAsset } from '../../lib/functions';
 import { useAuth } from '../auth/useAuth';
 import { BlockEditor } from '../blocks/BlockEditor';
 import { ArrowLeft, Save, Send } from 'lucide-react';
@@ -15,11 +17,13 @@ export const PageEditor = () => {
   const [slug, setSlug] = useState('');
   const [status, setStatus] = useState('draft');
   const [featuredImagePath, setFeaturedImagePath] = useState('');
+  const [featuredImageAlt, setFeaturedImageAlt] = useState('');
   const [blocks, setBlocks] = useState([]);
   
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -37,6 +41,7 @@ export const PageEditor = () => {
             page.featuredImage?.path ||
             ''
           );
+          setFeaturedImageAlt(page.featuredImage?.alt || '');
           setBlocks(page.blocks || []);
         } else {
           setError('Page not found');
@@ -57,15 +62,45 @@ export const PageEditor = () => {
   const handleFeaturedImagePathChange = (value) => {
     const path = String(value || '').trim();
     if (!path) {
-      setFeaturedImage(null);
+      setFeaturedImagePath('');
       return;
     }
     const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-    const inferredAlt = normalizedPath.split('/').pop() || '';
-    setFeaturedImage((prev) => ({
-      storagePath: normalizedPath,
-      alt: prev?.alt || inferredAlt,
-    }));
+    setFeaturedImagePath(normalizedPath);
+    if (!featuredImageAlt) {
+      setFeaturedImageAlt(normalizedPath.split('/').pop() || '');
+    }
+  };
+
+  const handleFeaturedImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError('');
+    setUploadingCover(true);
+    try {
+      const uploaded = await uploadImageToServer(file);
+      const normalizedPath = String(uploaded.path || '').replace(/^\//, '');
+
+      // Ensure featured uploads are indexed in Media Manager.
+      await callRegisterMediaAsset({
+        storagePath: normalizedPath,
+        fileName: uploaded.fileName || file.name,
+        mimeType: uploaded.mimeType || file.type || 'image/jpeg',
+        sizeBytes: uploaded.sizeBytes || file.size || null,
+      });
+
+      setFeaturedImagePath(normalizedPath);
+      if (!featuredImageAlt) {
+        setFeaturedImageAlt(uploaded.fileName || file.name || '');
+      }
+    } catch (err) {
+      console.error('Cover upload failed:', err);
+      setError(err?.message || 'Cover upload failed.');
+    } finally {
+      setUploadingCover(false);
+      e.target.value = '';
+    }
   };
 
   const [saveSuccess, setSaveSuccess] = useState('');
@@ -105,6 +140,9 @@ export const PageEditor = () => {
       slug,
       status,
       featuredImagePath: featuredImagePath || null,
+      featuredImage: featuredImagePath
+        ? { storagePath: featuredImagePath, alt: featuredImageAlt || '' }
+        : null,
       blocks
     };
 
@@ -206,17 +244,14 @@ export const PageEditor = () => {
               </div>
             )}
             <div className="admin-editor-upload-input-wrap">
+              <input type="file" accept="image/*" onChange={handleFeaturedImageUpload} disabled={saving || uploadingCover} />
+              <p className="admin-muted-text" style={{ marginTop: '8px' }}>
+                {uploadingCover ? 'Uploading cover image...' : (featuredImagePath ? `Saved path: /${featuredImagePath}` : 'No cover image uploaded yet.')}
+              </p>
               <input
                 type="text"
-                value={featuredImage?.storagePath || ''}
-                onChange={(e) => handleFeaturedImagePathChange(e.target.value)}
-                placeholder="Relative image path, e.g. /media/pages/cover.jpg"
-                className="admin-editor-input"
-              />
-              <input
-                type="text"
-                value={featuredImage?.alt || ''}
-                onChange={(e) => setFeaturedImage((prev) => ({ ...(prev || {}), alt: e.target.value }))}
+                value={featuredImageAlt || ''}
+                onChange={(e) => setFeaturedImageAlt(e.target.value)}
                 placeholder="Cover image alt text"
                 className="admin-editor-input"
                 style={{ marginTop: '8px' }}

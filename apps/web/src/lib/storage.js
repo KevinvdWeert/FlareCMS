@@ -60,25 +60,33 @@ export const uploadImageToServer = async (file) => {
   });
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.error || `Upload failed with status ${response.status}.`);
+    const errJson = await response.json().catch(() => null);
+    const errText = errJson ? '' : await response.text().catch(() => '');
+
+    if (
+      response.status === 500 &&
+      /ECONNREFUSED|proxy|connect/i.test(errText)
+    ) {
+      throw new Error('Upload server is not running. Start from repo root with `npm run dev` (or run `npm run server:dev` in a separate terminal).');
+    }
+
+    throw new Error(errJson?.error || `Upload failed with status ${response.status}.`);
   }
 
+  const payload = await response.json();
+  if (!payload?.path) {
+    throw new Error('Upload succeeded but server did not return a file path.');
+  }
+
+  return payload;
+};
+
+/**
+ * Resolves an image reference to a browser-loadable URL.
+ *
+ * For this project mode, Firestore stores relative web paths (e.g. /images/foo.jpg)
+ * or absolute URLs. Both are supported directly.
+ */
 export const getImageUrl = async (storagePath) => {
-  if (!storagePath) return null;
-  const raw = String(storagePath).trim();
-
-  // Absolute and relative web paths are served directly by the web server/CDN.
-  if (isAbsoluteUrl(raw) || raw.startsWith('/') || raw.startsWith('./') || raw.startsWith('../')) {
-    return resolveMediaUrl(raw);
-  }
-
-  // Backward compatibility: try Firebase Storage for legacy paths.
-  try {
-    const storageRef = ref(storage, raw);
-    return await getDownloadURL(storageRef);
-  } catch {
-    // If Storage is unavailable (no billing/bucket), treat the path as web-relative.
-    return resolveMediaUrl(raw);
-  }
+  return resolveMediaUrl(storagePath);
 };

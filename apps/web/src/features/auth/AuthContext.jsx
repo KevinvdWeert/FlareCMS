@@ -8,6 +8,9 @@ export const AuthProvider = ({ children }) => {
   const [profile, setProfile] = useState(null);
   const [profileError, setProfileError] = useState('');
   const [loading, setLoading] = useState(true);
+  const shouldUseProfileSnapshot = !(
+    import.meta.env.DEV && import.meta.env.VITE_USE_EMULATORS !== 'true'
+  );
 
   useEffect(() => {
     let unsubscribeProfile = null;
@@ -75,21 +78,23 @@ export const AuthProvider = ({ children }) => {
           }
         })();
 
-        try {
-          unsubscribeProfile = observeUserProfile(
-            firebaseUser.uid,
-            (userDoc) => {
-              setProfile(userDoc || { role: 'user' });
-              setProfileError('');
-            },
-            (error) => {
-              console.error('Error observing user profile:', error);
-              setProfileError(error?.message || 'Live profile sync failed.');
-            }
-          );
-        } catch (error) {
-          console.error('Error subscribing to user profile:', error);
-          setProfileError(error?.message || 'Unable to subscribe to profile changes.');
+        if (shouldUseProfileSnapshot) {
+          try {
+            unsubscribeProfile = observeUserProfile(
+              firebaseUser.uid,
+              (userDoc) => {
+                setProfile(userDoc || { role: 'user' });
+                setProfileError('');
+              },
+              (error) => {
+                console.error('Error observing user profile:', error);
+                setProfileError(error?.message || 'Live profile sync failed.');
+              }
+            );
+          } catch (error) {
+            console.error('Error subscribing to user profile:', error);
+            setProfileError(error?.message || 'Unable to subscribe to profile changes.');
+          }
         }
       } else {
         setProfile(null);

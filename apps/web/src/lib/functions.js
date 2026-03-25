@@ -7,7 +7,9 @@
 import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'firebase/functions';
 import { app } from './firebase';
 import {
+  addDoc,
   collection,
+  deleteDoc,
   getDoc,
   getDocs,
   doc,
@@ -16,8 +18,10 @@ import {
   orderBy,
   limit,
   startAfter,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { auth } from './firebase';
 
 const functions = getFunctions(app);
 
@@ -88,7 +92,7 @@ const directGetRecentActivity = async ({ limit: limitCount = 10 } = {}) => {
 const directListMediaAssets = async ({ pageSize = 20, startAfterId = null, mimeTypeFilter, ownerOnly = false } = {}) => {
   try {
     let q;
-    const base = collection(db, 'images');
+    const base = collection(db, 'mediaAssets');
 
     if (mimeTypeFilter) {
       q = query(base, where('mimeType', '==', mimeTypeFilter), orderBy('createdAt', 'desc'), limit(Math.min(pageSize, 100)));
@@ -97,7 +101,7 @@ const directListMediaAssets = async ({ pageSize = 20, startAfterId = null, mimeT
     }
 
     if (startAfterId) {
-      const cursor = await getDoc(doc(db, 'images', startAfterId));
+      const cursor = await getDoc(doc(db, 'mediaAssets', startAfterId));
       if (cursor.exists()) {
         q = query(q, startAfter(cursor));
       }
@@ -120,6 +124,36 @@ const directListMediaAssets = async ({ pageSize = 20, startAfterId = null, mimeT
     }
     throw err;
   }
+};
+
+const directDeleteMediaAsset = async (id) => {
+  await deleteDoc(doc(db, 'mediaAssets', id));
+  return { success: true };
+};
+
+const directRegisterMediaAsset = async (metadata) => {
+  const user = auth.currentUser;
+  if (!user?.uid) {
+    const err = new Error('Not authenticated');
+    err.code = 'auth/unauthenticated';
+    throw err;
+  }
+
+  const payload = {
+    storagePath: metadata.storagePath,
+    fileName: metadata.fileName,
+    mimeType: metadata.mimeType,
+    sizeBytes: metadata.sizeBytes ?? null,
+    dimensions: metadata.dimensions ?? null,
+    tags: Array.isArray(metadata.tags) ? metadata.tags : [],
+    ownerId: user.uid,
+    usedInPages: [],
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  const ref = await addDoc(collection(db, 'mediaAssets'), payload);
+  return { success: true, id: ref.id };
 };
 
 // Connect to emulator in development
@@ -228,7 +262,16 @@ export const callSetFrontPage = (pageId) =>
  * @param {{ storagePath: string, fileName: string, mimeType: string, sizeBytes?: number, dimensions?: object, tags?: string[] }} metadata
  */
 export const callRegisterMediaAsset = (metadata) =>
-  httpsCallable(functions, 'registerMediaAsset')(metadata);
+  (SHOULD_BYPASS_CALLABLES_LOCALLY
+    ? directRegisterMediaAsset(metadata).then((data) => ({ data }))
+    : httpsCallable(functions, 'registerMediaAsset')(metadata)
+  ).catch(async (err) => {
+    if (!shouldFallbackToFirestore(err)) {
+      throw err;
+    }
+    console.warn('Falling back to Firestore for registerMediaAsset:', err?.message || err);
+    return { data: await directRegisterMediaAsset(metadata) };
+  });
 
 /**
  * Lists media assets with pagination.
@@ -251,7 +294,16 @@ export const callListMediaAssets = (opts = {}) =>
  * @param {string} id
  */
 export const callDeleteMediaAsset = (id) =>
-  httpsCallable(functions, 'deleteMediaAsset')({ id });
+  (SHOULD_BYPASS_CALLABLES_LOCALLY
+    ? directDeleteMediaAsset(id).then((data) => ({ data }))
+    : httpsCallable(functions, 'deleteMediaAsset')({ id })
+  ).catch(async (err) => {
+    if (!shouldFallbackToFirestore(err)) {
+      throw err;
+    }
+    console.warn('Falling back to Firestore for deleteMediaAsset:', err?.message || err);
+    return { data: await directDeleteMediaAsset(id) };
+  });
 
 /**
  * Attaches a media asset to a page.
