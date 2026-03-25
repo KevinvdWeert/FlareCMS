@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPageById, createPage, updatePage, isSlugTaken } from '../../lib/firestore';
-import { uploadFeaturedImage, validateImageFile } from '../../lib/storage';
 import { useAuth } from '../auth/useAuth';
 import { BlockEditor } from '../blocks/BlockEditor';
 import { ArrowLeft, Save, Send } from 'lucide-react';
@@ -49,35 +48,18 @@ export const PageEditor = () => {
     }
   }, [title, id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleFeaturedImageUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    // If it's a new page without ID, we can't upload yet (we need an ID).
-    // In a real app we might create a draft document first or use a temp ID.
-    // For simplicity, we require saving the draft first if it's new.
-    if (!id) {
-      setError('Please save the page as draft first before uploading an image.');
+  const handleFeaturedImagePathChange = (value) => {
+    const path = String(value || '').trim();
+    if (!path) {
+      setFeaturedImage(null);
       return;
     }
-
-    try {
-      validateImageFile(file);
-    } catch (err) {
-      setError(err.message);
-      return;
-    }
-
-    try {
-      setSaving(true);
-      const imageData = await uploadFeaturedImage(id, file);
-      setFeaturedImage(imageData);
-    } catch (err) {
-      console.error(err);
-      setError(err.message || 'Upload failed.');
-    } finally {
-      setSaving(false);
-    }
+    const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
+    const inferredAlt = normalizedPath.split('/').pop() || '';
+    setFeaturedImage((prev) => ({
+      storagePath: normalizedPath,
+      alt: prev?.alt || inferredAlt,
+    }));
   };
 
   const [saveSuccess, setSaveSuccess] = useState('');
@@ -185,7 +167,7 @@ export const PageEditor = () => {
           <div className="admin-editor-blocks-wrap">
             <h2>Content Body</h2>
             <p className="admin-muted-text">Compose your article with modular content blocks.</p>
-            <BlockEditor blocks={blocks} setBlocks={setBlocks} pageId={id} />
+            <BlockEditor blocks={blocks} setBlocks={setBlocks} />
           </div>
         </section>
 
@@ -213,8 +195,21 @@ export const PageEditor = () => {
               </div>
             )}
             <div className="admin-editor-upload-input-wrap">
-              <input type="file" accept="image/*" onChange={handleFeaturedImageUpload} disabled={saving} />
-              {!id && <p className="admin-editor-hint-danger">Save page first to upload image.</p>}
+              <input
+                type="text"
+                value={featuredImage?.storagePath || ''}
+                onChange={(e) => handleFeaturedImagePathChange(e.target.value)}
+                placeholder="Relative image path, e.g. /media/pages/cover.jpg"
+                className="admin-editor-input"
+              />
+              <input
+                type="text"
+                value={featuredImage?.alt || ''}
+                onChange={(e) => setFeaturedImage((prev) => ({ ...(prev || {}), alt: e.target.value }))}
+                placeholder="Cover image alt text"
+                className="admin-editor-input"
+                style={{ marginTop: '8px' }}
+              />
             </div>
           </div>
         </aside>

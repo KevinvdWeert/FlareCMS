@@ -1,12 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { CloudUpload, Filter, Grid3X3, List, Tag, Trash, RefreshCw } from 'lucide-react';
-import { ref, uploadBytes, getDownloadURL, getStorage } from 'firebase/storage';
-import { app, storage } from '../../lib/firebase';
-import { useAuth } from '../auth/useAuth';
+import React, { useEffect, useState } from 'react';
+import { CloudUpload, Grid3X3, List, Tag, Trash, RefreshCw } from 'lucide-react';
+import { resolveMediaUrl } from '../../lib/storage';
 import { callRegisterMediaAsset, callListMediaAssets, callDeleteMediaAsset } from '../../lib/functions';
-import { validateImageFile } from '../../lib/storage';
 import { parseFirestoreTimestamp } from '../../lib/firestore';
-import { v4 as uuidv4 } from 'uuid';
 
 const MIME_LABELS = {
   'image/jpeg': 'JPEG',
@@ -23,52 +19,29 @@ const formatBytes = (bytes) => {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 };
 
-const getAlternateBucket = (bucket) => {
-  if (!bucket) return null;
-  if (bucket.endsWith('.firebasestorage.app')) {
-    return `${bucket.replace(/\.firebasestorage\.app$/, '')}.appspot.com`;
-  }
-  if (bucket.endsWith('.appspot.com')) {
-    return `${bucket.replace(/\.appspot\.com$/, '')}.firebasestorage.app`;
-  }
-  return null;
-};
-
-const getPreferredBucket = (bucket) => {
-  if (!bucket) return null;
-  if (bucket.endsWith('.firebasestorage.app')) {
-    return `${bucket.replace(/\.firebasestorage\.app$/, '')}.appspot.com`;
-  }
-  return bucket;
-};
-
-const isLikelyBucketOrCorsError = (err) => {
-  const code = String(err?.code || '');
-  const msg = String(err?.message || '').toLowerCase();
-  return (
-    code.includes('storage/unknown') ||
-    msg.includes('cors') ||
-    msg.includes('preflight') ||
-    msg.includes('xmlhttprequest') ||
-    msg.includes('failed to fetch')
-  );
+const guessMimeType = (path) => {
+  const lower = String(path || '').toLowerCase();
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.gif')) return 'image/gif';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.svg')) return 'image/svg+xml';
+  return 'image/jpeg';
 };
 
 export const MediaManager = () => {
-  const { user } = useAuth();
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
   const [lastId, setLastId] = useState(null);
   const [error, setError] = useState('');
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [savingPath, setSavingPath] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [selected, setSelected] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
   const [deletingId, setDeletingId] = useState('');
-  const fileInputRef = useRef(null);
+  const [pathInput, setPathInput] = useState('');
+  const [nameInput, setNameInput] = useState('');
 
   const loadAssets = async ({ reset = false } = {}) => {
     setLoading(true);
@@ -96,85 +69,37 @@ export const MediaManager = () => {
     loadAssets({ reset: true });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleFileSelect = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleAddPathAsset = async () => {
     setUploadError('');
-
-    try {
-      validateImageFile(file);
-    } catch (err) {
-      setUploadError(err.message);
+    const relativePath = (pathInput || '').trim();
+    if (!relativePath) {
+      setUploadError('Relative image path is required. Example: /media/home/hero.jpg');
       return;
     }
 
-    const ext = file.name.split('.').pop().toLowerCase();
-    const uniqueName = `${uuidv4()}.${ext}`;
-    const storagePath = `media/${user.uid}/${uniqueName}`;
-    const configuredBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET;
-    const preferredBucket = getPreferredBucket(configuredBucket);
-    const alternateBucket = getAlternateBucket(preferredBucket);
+    const normalizedPath = relativePath.startsWith('/')
+      ? relativePath.slice(1)
+      : relativePath;
 
-    setUploading(true);
-    setUploadProgress(0);
+    const fileName = (nameInput || normalizedPath.split('/').pop() || 'image').trim();
+    const mimeType = guessMimeType(normalizedPath);
 
+    setSavingPath(true);
     try {
-      const attemptedBuckets = [];
-      const uploadToBucket = async (bucket) => {
-        if (!bucket) {
-          const fallbackRef = ref(storage, storagePath);
-          attemptedBuckets.push('default-sdk-storage');
-          await uploadBytes(fallbackRef, file);
-          return;
-        }
-        attemptedBuckets.push(bucket);
-        const bucketStorage = getStorage(app, `gs://${bucket}`);
-        const bucketRef = ref(bucketStorage, storagePath);
-        await uploadBytes(bucketRef, file);
-      };
-
-      try {
-        await uploadToBucket(preferredBucket);
-      } catch (primaryErr) {
-        if (!alternateBucket || !isLikelyBucketOrCorsError(primaryErr) || alternateBucket === preferredBucket) {
-          throw primaryErr;
-        }
-
-        console.warn(`Primary bucket upload failed, retrying with alternate bucket: ${alternateBucket}`);
-        try {
-          await uploadToBucket(alternateBucket);
-        } catch (secondaryErr) {
-          secondaryErr.message = `${secondaryErr?.message || 'Upload failed.'} Tried buckets: ${attemptedBuckets.join(', ')}`;
-          throw secondaryErr;
-        }
-      }
-
-      setUploadProgress(100);
-
       await callRegisterMediaAsset({
-        storagePath,
-        fileName: file.name,
-        mimeType: file.type,
-        sizeBytes: file.size,
+        storagePath: normalizedPath,
+        fileName,
+        mimeType,
+        sizeBytes: null,
       });
+      setPathInput('');
+      setNameInput('');
       await loadAssets({ reset: true });
     } catch (err) {
-      console.error('Upload error:', err);
-      const code = String(err?.code || '');
-      if (code.includes('storage/unauthorized')) {
-        setUploadError('Upload denied by Storage rules. Confirm your user has staff role (admin/editor) in users/{uid}.');
-      } else if (code.includes('storage/unknown') || isLikelyBucketOrCorsError(err)) {
-        setUploadError(
-          'Upload blocked by CORS policy. For local development, set VITE_USE_EMULATORS=true in .env.local and run `npm run emulators`. ' +
-          'For production, run `npm run deploy:cors` to apply the Storage CORS configuration.'
-        );
-      } else {
-        setUploadError(err?.message || 'Upload failed.');
-      }
+      console.error('Register path asset error:', err);
+      setUploadError(err?.message || 'Failed to save image path.');
     } finally {
-      setUploading(false);
-      setUploadProgress(0);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      setSavingPath(false);
     }
   };
 
@@ -199,14 +124,7 @@ export const MediaManager = () => {
 
   const handleSelect = async (asset) => {
     setSelected(asset);
-    setPreviewUrl(null);
-    try {
-      const storageRef = ref(storage, asset.storagePath);
-      const url = await getDownloadURL(storageRef);
-      setPreviewUrl(url);
-    } catch {
-      setPreviewUrl(null);
-    }
+    setPreviewUrl(resolveMediaUrl(asset.storagePath));
   };
 
   return (
@@ -235,18 +153,6 @@ export const MediaManager = () => {
             <RefreshCw size={15} />
             <span>Refresh</span>
           </button>
-          <label className="admin-button-primary" style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}>
-            <CloudUpload size={15} />
-            <span>{uploading ? `Uploading ${uploadProgress}%` : 'Upload'}</span>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileSelect}
-              disabled={uploading}
-              style={{ display: 'none' }}
-            />
-          </label>
           <div className="media-view-toggle">
             <button type="button" className={viewMode === 'grid' ? 'is-active' : ''} onClick={() => setViewMode('grid')} aria-label="Grid view">
               <Grid3X3 size={15} />
@@ -261,6 +167,33 @@ export const MediaManager = () => {
       {(error || uploadError) && (
         <div className="admin-editor-error">{error || uploadError}</div>
       )}
+
+      <section className="media-toolbar admin-surface" style={{ marginTop: '-6px' }}>
+        <div className="media-toolbar-left" style={{ flex: 1 }}>
+          <input
+            type="text"
+            className="admin-input"
+            placeholder="Relative image path, e.g. /media/home/hero.jpg"
+            value={pathInput}
+            onChange={(e) => setPathInput(e.target.value)}
+            style={{ width: '100%' }}
+          />
+        </div>
+        <div className="media-toolbar-right" style={{ flex: 1 }}>
+          <input
+            type="text"
+            className="admin-input"
+            placeholder="Display name (optional)"
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            style={{ width: '100%' }}
+          />
+          <button type="button" className="admin-button-primary" onClick={handleAddPathAsset} disabled={savingPath}>
+            <CloudUpload size={15} />
+            <span>{savingPath ? 'Saving...' : 'Add Path'}</span>
+          </button>
+        </div>
+      </section>
 
       <section className="media-layout">
         <div className={viewMode === 'grid' ? 'media-grid' : 'media-list'}>
@@ -302,22 +235,20 @@ export const MediaManager = () => {
 
           {!loading && (
             <article className="admin-surface media-card media-card-add">
-              <label style={{ cursor: uploading ? 'not-allowed' : 'pointer', display: 'contents' }}>
+              <button
+                type="button"
+                onClick={handleAddPathAsset}
+                disabled={savingPath}
+                style={{ border: 0, background: 'transparent', display: 'contents', cursor: 'pointer' }}
+              >
                 <div className="media-card-art">
                   <CloudUpload size={20} />
                 </div>
                 <div className="media-card-meta">
                   <p>Add Asset</p>
-                  <small>Upload from desktop</small>
+                  <small>Save relative path</small>
                 </div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  disabled={uploading}
-                  style={{ display: 'none' }}
-                />
-              </label>
+              </button>
             </article>
           )}
         </div>

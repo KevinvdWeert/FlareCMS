@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { uploadBlockImage, validateImageFile } from '../../lib/storage';
 import { Type, Image as ImageIcon, Heading1, Trash, ArrowUp, ArrowDown } from 'lucide-react';
 
-export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
-  const [uploadError, setUploadError] = useState('');
+export const BlockEditor = ({ blocks, setBlocks }) => {
+  const [pathError, setPathError] = useState('');
 
   const addBlock = (type) => {
     const newBlock = { id: uuidv4(), type };
@@ -46,26 +45,20 @@ export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
     setBlocks(newBlocks);
   };
 
-  const handleImageUpload = async (index, file) => {
-    setUploadError('');
-    if (!file) {
+  const handleImagePathSet = (index, value) => {
+    setPathError('');
+    const path = (value || '').trim();
+    if (!path) {
+      setPathError('Image path is required for image blocks.');
       return;
     }
-    if (!pageId) {
-      setUploadError('Please save the page first before uploading images to blocks.');
-      return;
+    const normalized = path.startsWith('/') ? path.slice(1) : path;
+    const newBlocks = [...blocks];
+    newBlocks[index].storagePath = normalized;
+    if (!newBlocks[index].alt) {
+      newBlocks[index].alt = normalized.split('/').pop() || '';
     }
-    try {
-      validateImageFile(file);
-      const imageData = await uploadBlockImage(pageId, file);
-      const newBlocks = [...blocks];
-      newBlocks[index].storagePath = imageData.storagePath;
-      newBlocks[index].alt = imageData.alt;
-      setBlocks(newBlocks);
-    } catch (err) {
-      console.error(err);
-      setUploadError(err.message || 'Image upload failed.');
-    }
+    setBlocks(newBlocks);
   };
 
   return (
@@ -82,8 +75,8 @@ export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
         </button>
       </div>
 
-      {uploadError && (
-        <div className="admin-editor-error" style={{ marginBottom: '10px' }}>{uploadError}</div>
+      {pathError && (
+        <div className="admin-editor-error" style={{ marginBottom: '10px' }}>{pathError}</div>
       )}
 
       <div className="block-list">
@@ -130,14 +123,27 @@ export const BlockEditor = ({ blocks, setBlocks, pageId }) => {
 
             {block.type === 'image' && (
               <div className="block-form-column">
-                {block.storagePath ? (
+                <input
+                  className="block-input block-input-grow"
+                  type="text"
+                  value={block.storagePath || ''}
+                  onChange={(e) => updateBlock(index, 'storagePath', e.target.value)}
+                  onBlur={(e) => handleImagePathSet(index, e.target.value)}
+                  placeholder="Relative image path, e.g. /media/article/hero.jpg"
+                />
+                {block.storagePath && (
                   <div className="block-image-meta">
                     <p><strong>Image Path:</strong> {block.storagePath}</p>
                     <p><strong>Alt:</strong> {block.alt}</p>
                   </div>
-                ) : (
-                  <input className="block-input block-input-grow" type="file" accept="image/*" onChange={(e) => handleImageUpload(index, e.target.files?.[0])} />
                 )}
+                <input
+                  type="text"
+                  value={block.alt || ''}
+                  onChange={(e) => updateBlock(index, 'alt', e.target.value)}
+                  placeholder="Alt text..."
+                  className="block-input block-input-grow"
+                />
                 <input 
                   type="text" 
                   value={block.caption || ''} 

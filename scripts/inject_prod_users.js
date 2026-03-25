@@ -36,7 +36,7 @@ const USERS = [
   },
 ];
 
-function slugifyName(input) {
+function slugifyName(input) { // create whitelist instead of blacklist to avoid issues with non-Latin chars
   return String(input || '')
     .trim()
     .toLowerCase()
