@@ -28,8 +28,8 @@ export const AdminLayout = () => {
     <div className="admin-shell">
       <aside className="admin-sidebar">
         <div className="admin-brand-wrap">
-          <div className="admin-brand">FlareCMS</div>
-          <p className="admin-brand-subtitle">Content Studio</p>
+          <div className="admin-brand">Editorial</div>
+          <p className="admin-brand-subtitle">Monolith CMS</p>
         </div>
 
         <nav className="admin-nav">
@@ -88,7 +88,7 @@ export const AdminLayout = () => {
         <header className="admin-topbar">
           <label className="admin-search-wrap" htmlFor="admin-global-search">
             <Search size={16} />
-            <input id="admin-global-search" type="search" placeholder="Search system..." />
+            <input id="admin-global-search" type="search" placeholder="Search pages, assets, metadata..." />
           </label>
 
           <div className="admin-topbar-actions">
@@ -98,6 +98,7 @@ export const AdminLayout = () => {
             <button type="button" className="admin-top-icon-btn" aria-label="Settings">
               <Settings size={17} />
             </button>
+            <div className="admin-topbar-divider" />
           </div>
         </header>
 
