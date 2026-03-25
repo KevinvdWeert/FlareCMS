@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, Globe, Layers, Sparkles } from 'lucide-react';
+import { Activity, Layers, Sparkles } from 'lucide-react';
 import { callGetDashboardStats, callGetRecentActivity } from '../../lib/functions';
 import { parseFirestoreTimestamp } from '../../lib/firestore';
 
@@ -15,6 +15,9 @@ const ACTION_LABELS = {
   invite_created: 'invited user',
   invite_accepted: 'accepted invite',
 };
+
+const TRAFFIC_SERIES = [38, 56, 49, 72, 61, 86, 66, 42];
+const TRAFFIC_LABELS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN', 'MON'];
 
 const formatActivityTime = (createdAt) => {
   if (!createdAt) return '';
@@ -64,20 +67,79 @@ export const Dashboard = () => {
   return (
     <div className="admin-section dashboard-screen">
       <section className="editorial-masthead dashboard-masthead">
-        <div>
+        <div className="dashboard-masthead-copy">
           <span className="editorial-kicker">System Overview</span>
           <h1>
-            FlareCMS <span>Dashboard</span>
+            The Editorial
+            <br />
+            <span>Monolith</span>
           </h1>
           <p>
             Welcome back. Your curated workspace is synchronized and ready for the next edition.
+            Recent analytics show a 24% increase in reader engagement.
           </p>
         </div>
-        <div className="editorial-masthead-card">
-          <Globe size={28} />
-          <strong>{statsLoading ? '—' : (stats?.totalUsers ?? '—')}</strong>
-          <span>Total users</span>
+        <div className="dashboard-masthead-visual">
+          <div className="dashboard-masthead-image">
+            <img
+              src="https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1200&q=80"
+              alt="Editorial workspace"
+            />
+          </div>
+          <div className="dashboard-masthead-metric">
+            <strong>{statsLoading ? '—' : (stats?.totalUsers ?? '—')}</strong>
+            <span>Total Users</span>
+          </div>
         </div>
+      </section>
+
+      <section className="dashboard-grid">
+        <article className="admin-surface dashboard-card">
+          <div className="dashboard-card-head">
+            <div>
+              <h3>Site Traffic Trends</h3>
+              <p>Performance over the last 30 days</p>
+            </div>
+            <div className="dashboard-pills" aria-label="Traffic timeframe">
+              <span>Daily</span>
+              <span className="is-active">Weekly</span>
+            </div>
+          </div>
+
+          <div className="dashboard-chart-bars" role="img" aria-label="Bar chart of weekly traffic trends">
+            {TRAFFIC_SERIES.map((value, idx) => (
+              <i
+                key={`${TRAFFIC_LABELS[idx]}-${idx}`}
+                className={idx === 5 ? 'is-highlight' : ''}
+                style={{ height: `${value}%` }}
+              />
+            ))}
+          </div>
+          <div className="dashboard-chart-labels" aria-hidden="true">
+            {TRAFFIC_LABELS.map((label, idx) => (
+              <span key={`${label}-${idx}`}>{label}</span>
+            ))}
+          </div>
+        </article>
+
+        <article className="admin-surface dashboard-card">
+          <h3>Live Preview Hub</h3>
+          <div className="dashboard-preview-frame">
+            <img
+              src="https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?auto=format&fit=crop&w=700&q=80"
+              alt="Campaign preview board"
+            />
+          </div>
+          <p className="dashboard-side-copy">
+            <strong>Current Active Campaign:</strong>
+            <br />
+            &quot;Autumn Whispers: A Study in Minimalist Textiles&quot;
+          </p>
+          <button type="button" className="admin-button-primary dashboard-side-cta">
+            <Sparkles size={15} />
+            <span>Launch Designer Mode</span>
+          </button>
+        </article>
       </section>
 
       <section className="dashboard-activity admin-surface">
