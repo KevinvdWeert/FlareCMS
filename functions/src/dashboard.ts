@@ -1,7 +1,7 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { createLogger } from "./lib/logger";
-import { ErrorMessages } from "./lib/errors";
+import { requireStaff } from "./lib/db";
 
 const db = admin.firestore();
 
@@ -12,26 +12,20 @@ const STATS_CACHE_TTL_MS = 5 * 60 * 1000;
  * Callable: Get aggregate dashboard stats.
  * Returns counts for users, published pages, draft pages, and media assets.
  * Results are cached in a Firestore settings document for STATS_CACHE_TTL_MS.
+ *
+ * A Firestore transaction is used to check-and-write the cache atomically,
+ * preventing a cache stampede where many concurrent callers all see a stale
+ * cache and each independently fire the four aggregate queries.
+ *
  * Requires staff.
  */
 export const getDashboardStats = functions.https.onCall(async (_data, context) => {
   const log = createLogger();
+  await requireStaff(context);
 
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", ErrorMessages.UNAUTHENTICATED);
-  }
-
-  const callerDoc = await db.collection("users").doc(context.auth.uid).get();
-  if (!callerDoc.exists) {
-    throw new functions.https.HttpsError("permission-denied", ErrorMessages.FORBIDDEN);
-  }
-  const role = callerDoc.data()?.role as string;
-  if (role !== "admin" && role !== "editor") {
-    throw new functions.https.HttpsError("permission-denied", ErrorMessages.FORBIDDEN);
-  }
-
-  // Check cache
   const cacheRef = db.collection("settings").doc("dashboardStatsCache");
+
+  // Fast path: serve from cache when fresh (no transaction needed for reads).
   const cacheSnap = await cacheRef.get();
   if (cacheSnap.exists) {
     const cached = cacheSnap.data()!;
@@ -42,9 +36,9 @@ export const getDashboardStats = functions.https.onCall(async (_data, context) =
     }
   }
 
-  log.info("Computing fresh dashboard stats", { callerUid: context.auth.uid });
+  log.info("Computing fresh dashboard stats", { callerUid: context.auth!.uid });
 
-  // Run aggregate queries in parallel
+  // Run all four aggregate queries in parallel.
   const [usersSnap, publishedSnap, draftSnap, assetsSnap] = await Promise.all([
     db.collection("users").count().get(),
     db.collection("pages").where("status", "==", "published").count().get(),
@@ -60,10 +54,20 @@ export const getDashboardStats = functions.https.onCall(async (_data, context) =
     computedAt: new Date().toISOString(),
   };
 
-  // Save to cache
-  await cacheRef.set({
-    stats,
-    cachedAt: admin.firestore.FieldValue.serverTimestamp(),
+  // Write the new cache value inside a transaction so that concurrent callers
+  // that also passed the stale-cache check above don't overwrite each other
+  // with slightly different timestamps — and only the first write wins.
+  await db.runTransaction(async (txn) => {
+    const fresh = await txn.get(cacheRef);
+    const freshCachedAt = fresh.exists ? (fresh.data()!.cachedAt?.toMillis?.() || 0) : 0;
+    // Only write if no other caller has already refreshed the cache since we
+    // started computing.
+    if (Date.now() - freshCachedAt >= STATS_CACHE_TTL_MS) {
+      txn.set(cacheRef, {
+        stats,
+        cachedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
   });
 
   return { ...stats, fromCache: false };
@@ -75,19 +79,7 @@ export const getDashboardStats = functions.https.onCall(async (_data, context) =
  */
 export const getRecentActivity = functions.https.onCall(async (data, context) => {
   const log = createLogger();
-
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", ErrorMessages.UNAUTHENTICATED);
-  }
-
-  const callerDoc = await db.collection("users").doc(context.auth.uid).get();
-  if (!callerDoc.exists) {
-    throw new functions.https.HttpsError("permission-denied", ErrorMessages.FORBIDDEN);
-  }
-  const role = callerDoc.data()?.role as string;
-  if (role !== "admin" && role !== "editor") {
-    throw new functions.https.HttpsError("permission-denied", ErrorMessages.FORBIDDEN);
-  }
+  await requireStaff(context);
 
   const { limit: limitCount = 20 } = (data as { limit?: number }) || {};
 
@@ -109,18 +101,7 @@ export const getRecentActivity = functions.https.onCall(async (data, context) =>
  * Data contract: { summary: { pageViews: number, uniqueVisitors: number, topPages: Array<{slug, views}> } }
  */
 export const getTrafficSummary = functions.https.onCall(async (_data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", ErrorMessages.UNAUTHENTICATED);
-  }
-
-  const callerDoc = await db.collection("users").doc(context.auth.uid).get();
-  if (!callerDoc.exists) {
-    throw new functions.https.HttpsError("permission-denied", ErrorMessages.FORBIDDEN);
-  }
-  const role = callerDoc.data()?.role as string;
-  if (role !== "admin" && role !== "editor") {
-    throw new functions.https.HttpsError("permission-denied", ErrorMessages.FORBIDDEN);
-  }
+  await requireStaff(context);
 
   // TODO: Integrate Google Analytics Data API or a custom Firestore view-counter
   // to populate real traffic data. The data contract is:

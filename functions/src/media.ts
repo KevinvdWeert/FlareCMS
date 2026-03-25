@@ -3,44 +3,9 @@ import * as admin from "firebase-admin";
 import { createLogger } from "./lib/logger";
 import { ErrorMessages } from "./lib/errors";
 import { ALLOWED_MIME_TYPES, MAX_ASSET_BYTES } from "./lib/validation";
+import { writeActivityLog, requireStaff } from "./lib/db";
 
 const db = admin.firestore();
-
-/**
- * Writes a structured entry to the activityLog collection.
- */
-async function writeActivityLog(entry: {
-  actorId: string;
-  actorEmail?: string | null;
-  action: string;
-  resourceType: string;
-  resourceId?: string;
-  meta?: Record<string, unknown>;
-}): Promise<void> {
-  await db.collection("activityLog").add({
-    ...entry,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
-}
-
-/** Checks if the caller is staff (admin or editor). */
-async function requireStaff(
-  context: functions.https.CallableContext
-): Promise<admin.firestore.DocumentData> {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", ErrorMessages.UNAUTHENTICATED);
-  }
-  const doc = await db.collection("users").doc(context.auth.uid).get();
-  if (!doc.exists) {
-    throw new functions.https.HttpsError("permission-denied", ErrorMessages.FORBIDDEN);
-  }
-  const data = doc.data()!;
-  const role = data.role as string;
-  if (role !== "admin" && role !== "editor") {
-    throw new functions.https.HttpsError("permission-denied", ErrorMessages.FORBIDDEN);
-  }
-  return data;
-}
 
 /**
  * Callable: Register media asset metadata in Firestore after a client-side upload.
@@ -124,24 +89,20 @@ export const listMediaAssets = functions.https.onCall(async (data, context) => {
 
   log.info("listMediaAssets called", { callerUid: context.auth!.uid });
 
-  let q: admin.firestore.Query = db
-    .collection("mediaAssets")
-    .orderBy("createdAt", "desc")
-    .limit(Math.min(pageSize, 100));
+  // Fetch one extra document to determine whether a next page exists.
+  const safeLimit = Math.min(pageSize, 100);
 
+  // Build base query with all applicable filters combined.
+  let baseQuery: admin.firestore.Query = db.collection("mediaAssets");
   if (ownerOnly) {
-    q = db
-      .collection("mediaAssets")
-      .where("ownerId", "==", context.auth!.uid)
-      .orderBy("createdAt", "desc")
-      .limit(Math.min(pageSize, 100));
-  } else if (mimeTypeFilter) {
-    q = db
-      .collection("mediaAssets")
-      .where("mimeType", "==", mimeTypeFilter)
-      .orderBy("createdAt", "desc")
-      .limit(Math.min(pageSize, 100));
+    baseQuery = baseQuery.where("ownerId", "==", context.auth!.uid);
   }
+  if (mimeTypeFilter) {
+    baseQuery = baseQuery.where("mimeType", "==", mimeTypeFilter);
+  }
+  let q: admin.firestore.Query = baseQuery
+    .orderBy("createdAt", "desc")
+    .limit(safeLimit + 1);
 
   if (startAfterId) {
     const startDoc = await db.collection("mediaAssets").doc(startAfterId).get();
@@ -151,9 +112,11 @@ export const listMediaAssets = functions.https.onCall(async (data, context) => {
   }
 
   const snap = await q.get();
-  const assets = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const hasMore = snap.docs.length > safeLimit;
+  const pageDocs = snap.docs.slice(0, safeLimit);
+  const assets = pageDocs.map((d) => ({ id: d.id, ...d.data() }));
 
-  return { assets, hasMore: snap.docs.length === pageSize };
+  return { assets, hasMore };
 });
 
 /**
@@ -221,7 +184,6 @@ export const deleteMediaAsset = functions.https.onCall(async (data, context) => 
  */
 export const attachAssetToPage = functions.https.onCall(async (data, context) => {
   await requireStaff(context);
-  const uid = context.auth!.uid;
 
   const { assetId, pageId } = (data as { assetId?: string; pageId?: string }) || {};
   if (!assetId || !pageId) {

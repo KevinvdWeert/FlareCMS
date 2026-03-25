@@ -28,5 +28,6 @@ const mockFunctions = {
   },
 };
 
-export const logger = mockFunctions.logger;
-export = mockFunctions;
+// `logger` is a named export used by lib/logger.ts; expose it both ways so
+// that both `import { logger }` and `import * as functions from '...'` work.
+export = Object.assign(mockFunctions, { logger: mockFunctions.logger });

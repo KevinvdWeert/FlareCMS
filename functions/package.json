@@ -37,7 +37,8 @@
     ],
     "moduleNameMapper": {
       "^firebase-admin$": "<rootDir>/__mocks__/firebase-admin.ts",
-      "^firebase-functions$": "<rootDir>/__mocks__/firebase-functions.ts"
+      "^firebase-functions$": "<rootDir>/__mocks__/firebase-functions.ts",
+      "^uuid$": "<rootDir>/__mocks__/uuid.ts"
     }
   },
   "private": true

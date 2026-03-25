@@ -1,27 +1,17 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+import crypto from "crypto";
 import { createLogger } from "./lib/logger";
 import { ErrorMessages } from "./lib/errors";
 import { validateRole, type Role } from "./lib/validation";
+import { writeActivityLog } from "./lib/db";
 
 const db = admin.firestore();
 const auth = admin.auth();
 
-/**
- * Writes a structured entry to the activityLog collection.
- */
-async function writeActivityLog(entry: {
-  actorId: string;
-  actorEmail?: string | null;
-  action: string;
-  resourceType: string;
-  resourceId?: string;
-  meta?: Record<string, unknown>;
-}): Promise<void> {
-  await db.collection("activityLog").add({
-    ...entry,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
+/** Generates a URL-safe 32-character cryptographically secure random token. */
+function generateToken(): string {
+  return crypto.randomBytes(24).toString("base64url").slice(0, 32);
 }
 
 /**
@@ -59,30 +49,37 @@ export const setUserRole = functions.https.onCall(async (data, context) => {
     role,
   });
 
-  // Last-admin safety guard
-  if (role !== "admin") {
-    const targetDoc = await db.collection("users").doc(targetUid).get();
-    if (targetDoc.exists && targetDoc.data()?.role === "admin") {
-      // Count remaining admins
-      const adminsSnap = await db
-        .collection("users")
-        .where("role", "==", "admin")
-        .get();
-      if (adminsSnap.size <= 1) {
-        throw new functions.https.HttpsError(
-          "failed-precondition",
-          ErrorMessages.LAST_ADMIN
-        );
-      }
-    }
-  }
-
-  // Apply role change in Firestore
   const targetRef = db.collection("users").doc(targetUid);
-  await targetRef.update({
-    role: role as Role,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
+
+  // Last-admin safety guard — run inside a transaction to prevent a race
+  // where two concurrent calls both pass the count check and both demote.
+  if (role !== "admin") {
+    await db.runTransaction(async (txn) => {
+      const targetDoc = await txn.get(targetRef);
+      if (targetDoc.exists && targetDoc.data()?.role === "admin") {
+        const adminsSnap = await db
+          .collection("users")
+          .where("role", "==", "admin")
+          .get();
+        if (adminsSnap.size <= 1) {
+          throw new functions.https.HttpsError(
+            "failed-precondition",
+            ErrorMessages.LAST_ADMIN
+          );
+        }
+      }
+      txn.update(targetRef, {
+        role: role as Role,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+  } else {
+    // Promoting to admin — no guard needed, just update.
+    await targetRef.update({
+      role: role as Role,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
 
   // Sync Auth custom claims
   await auth.setCustomUserClaims(targetUid, { role });
@@ -124,10 +121,12 @@ export const listUsers = functions.https.onCall(async (data, context) => {
 
   log.info("listUsers called", { callerUid: context.auth.uid, pageSize });
 
+  const safeLimit = Math.min(pageSize, 100);
+
   let q = db
     .collection("users")
     .orderBy("createdAt", "desc")
-    .limit(Math.min(pageSize, 100));
+    .limit(safeLimit + 1);
 
   if (startAfterUid) {
     const startDoc = await db.collection("users").doc(startAfterUid).get();
@@ -137,9 +136,10 @@ export const listUsers = functions.https.onCall(async (data, context) => {
   }
 
   const snap = await q.get();
-  const users = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const hasMore = snap.docs.length > safeLimit;
+  const users = snap.docs.slice(0, safeLimit).map((d) => ({ id: d.id, ...d.data() }));
 
-  return { users, hasMore: snap.docs.length === pageSize };
+  return { users, hasMore };
 });
 
 /**
@@ -212,6 +212,10 @@ export const createInvite = functions.https.onCall(async (data, context) => {
 /**
  * Callable: Accept an invite by token.
  * The user must already be authenticated (created via normal signup).
+ *
+ * Uses a Firestore transaction to atomically verify the invite is still
+ * pending and mark it as used, preventing two concurrent acceptances of the
+ * same token from both succeeding.
  */
 export const acceptInvite = functions.https.onCall(async (data, context) => {
   const log = createLogger();
@@ -227,6 +231,7 @@ export const acceptInvite = functions.https.onCall(async (data, context) => {
 
   log.info("acceptInvite called", { uid: context.auth.uid });
 
+  // Find the invite outside the transaction (queries can't run inside one).
   const inviteSnap = await db
     .collection("invites")
     .where("token", "==", token)
@@ -238,54 +243,57 @@ export const acceptInvite = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("not-found", ErrorMessages.INVITE_USED);
   }
 
-  const inviteDoc = inviteSnap.docs[0];
-  const invite = inviteDoc.data();
+  const inviteDocRef = inviteSnap.docs[0].ref;
+  const inviteData = inviteSnap.docs[0].data();
 
-  // Check expiry
-  const expiresAt = invite.expiresAt?.toDate?.() as Date | undefined;
+  // Check expiry before entering the transaction.
+  const expiresAt = inviteData.expiresAt?.toDate?.() as Date | undefined;
   if (expiresAt && expiresAt < new Date()) {
-    await inviteDoc.ref.update({ status: "expired" });
+    await inviteDocRef.update({ status: "expired" });
     throw new functions.https.HttpsError("failed-precondition", "This invite has expired.");
   }
 
-  // Check email matches
+  // Check email matches.
   const callerEmail = context.auth.token?.email?.toLowerCase();
-  if (callerEmail && invite.email && callerEmail !== invite.email) {
+  if (callerEmail && inviteData.email && callerEmail !== inviteData.email) {
     throw new functions.https.HttpsError(
       "permission-denied",
       "This invite is for a different email address."
     );
   }
 
-  // Apply role to user and mark invite as used
-  const batch = db.batch();
-  batch.update(db.collection("users").doc(context.auth.uid), {
-    role: invite.role,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  // Use a transaction to atomically claim the invite.  A re-read inside the
+  // transaction guarantees that only one concurrent caller can transition it
+  // from "pending" → "used".
+  const uid = context.auth.uid;
+  const inviteRole = await db.runTransaction(async (txn) => {
+    const freshInvite = await txn.get(inviteDocRef);
+    if (!freshInvite.exists || freshInvite.data()?.status !== "pending") {
+      throw new functions.https.HttpsError("not-found", ErrorMessages.INVITE_USED);
+    }
+    const role = freshInvite.data()!.role as Role;
+    txn.update(inviteDocRef, {
+      status: "used",
+      usedBy: uid,
+      usedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    txn.update(db.collection("users").doc(uid), {
+      role,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return role;
   });
-  batch.update(inviteDoc.ref, {
-    status: "used",
-    usedBy: context.auth.uid,
-    usedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
-  await batch.commit();
 
-  // Sync claims
-  await auth.setCustomUserClaims(context.auth.uid, { role: invite.role });
+  // Sync claims outside the transaction (Auth SDK call).
+  await auth.setCustomUserClaims(uid, { role: inviteRole });
 
   await writeActivityLog({
-    actorId: context.auth.uid,
+    actorId: uid,
     action: "invite_accepted",
     resourceType: "invite",
-    resourceId: inviteDoc.id,
-    meta: { role: invite.role },
+    resourceId: inviteDocRef.id,
+    meta: { role: inviteRole },
   });
 
-  return { success: true, role: invite.role };
+  return { success: true, role: inviteRole };
 });
-
-/** Generates a URL-safe 32-character cryptographically secure random token. */
-function generateToken(): string {
-  const crypto = require("crypto") as typeof import("crypto");
-  return crypto.randomBytes(24).toString("base64url").slice(0, 32);
-}
