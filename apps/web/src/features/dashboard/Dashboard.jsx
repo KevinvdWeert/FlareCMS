@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, Layers, Sparkles } from 'lucide-react';
+import { Layers, Sparkles } from 'lucide-react';
 import { callGetDashboardStats, callGetRecentActivity } from '../../lib/functions';
 import { parseFirestoreTimestamp } from '../../lib/firestore';
 
@@ -93,8 +93,8 @@ export const Dashboard = () => {
         </div>
       </section>
 
-      <section className="dashboard-grid">
-        <article className="admin-surface dashboard-card">
+      <section className="dashboard-bento">
+        <article className="dashboard-card dashboard-card-traffic" style={{ gridColumn: 'span 2' }}>
           <div className="dashboard-card-head">
             <div>
               <h3>Site Traffic Trends</h3>
@@ -122,7 +122,7 @@ export const Dashboard = () => {
           </div>
         </article>
 
-        <article className="admin-surface dashboard-card">
+        <article className="dashboard-card dashboard-card-preview" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <h3>Live Preview Hub</h3>
           <div className="dashboard-preview-frame">
             <img
@@ -140,70 +140,73 @@ export const Dashboard = () => {
             <span>Launch Designer Mode</span>
           </button>
         </article>
-      </section>
 
-      <section className="dashboard-activity admin-surface">
-        <div className="dashboard-activity-head">
-          <div>
-            <h3>Recent Activity</h3>
-            <p>Monitoring global contributions and editorial changes across the platform.</p>
+        <div className="dashboard-bento-wide">
+          <div className="dashboard-bento-header">
+            <div>
+              <h3>Recent<br/>Activity</h3>
+              <div className="dashboard-bento-accent-line" />
+            </div>
+            <p className="dashboard-bento-desc">
+              Monitoring global contributions and editorial changes across the platform.
+            </p>
           </div>
-          <Activity size={20} />
-        </div>
 
-        {activityError && <p className="admin-editor-error">{activityError}</p>}
-
-        <div className="dashboard-activity-list">
-          {activityLoading ? (
-            <div className="dashboard-activity-row"><div><p className="admin-muted-text">Loading activity…</p></div></div>
-          ) : activity.length === 0 ? (
-            <div className="dashboard-activity-row"><div><p className="admin-muted-text">No activity yet.</p></div></div>
-          ) : (
-            activity.map((item) => (
-              <div key={item.id} className="dashboard-activity-row">
-                <div>
-                  <p>
-                    {item.actorEmail || item.actorId}{' '}
-                    {ACTION_LABELS[item.action] || item.action}
-                    {item.meta?.title ? ` "${item.meta.title}"` : ''}
-                  </p>
-                  <small>
-                    {formatActivityTime(item.createdAt)}{' '}
-                    &bull; {(item.resourceType || '').toUpperCase()}
-                  </small>
-                </div>
-                <span aria-hidden="true">›</span>
-              </div>
-            ))
-          )}
+          <div className="dashboard-activity">
+            {activityError && <p className="admin-editor-error">{activityError}</p>}
+            <div className="dashboard-activity-list">
+              {activityLoading ? (
+                <div className="dashboard-activity-row"><div><p className="admin-muted-text">Loading activity…</p></div></div>
+              ) : activity.length === 0 ? (
+                <div className="dashboard-activity-row"><div><p className="admin-muted-text">No activity yet.</p></div></div>
+              ) : (
+                activity.map((item) => (
+                  <div key={item.id} className="dashboard-activity-row">
+                    <div>
+                      <p>
+                        {item.actorEmail || item.actorId}{' '}
+                        {ACTION_LABELS[item.action] || item.action}
+                        {item.meta?.title ? ` "${item.meta.title}"` : ''}
+                      </p>
+                      <small>
+                        {formatActivityTime(item.createdAt)}{' '}
+                        &bull; {(item.resourceType || '').toUpperCase()}
+                      </small>
+                    </div>
+                    <span aria-hidden="true">›</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       </section>
 
       <section className="dashboard-stats-row">
-        <article className="admin-surface dashboard-stat-card">
+        <article className="dashboard-stat-card">
           <p>Published Pages</p>
           <strong>{statsLoading ? '—' : (stats?.publishedPages ?? '—')}</strong>
         </article>
-        <article className="admin-surface dashboard-stat-card">
+        <article className="dashboard-stat-card">
           <p>Draft Pages</p>
           <strong>{statsLoading ? '—' : (stats?.draftPages ?? '—')}</strong>
         </article>
-        <article className="admin-surface dashboard-stat-card">
+        <article className="dashboard-stat-card">
           <p>Active Users</p>
           <strong>{statsLoading ? '—' : (stats?.totalUsers ?? '—')}</strong>
         </article>
-        <article className="admin-surface dashboard-stat-card">
+        <article className="dashboard-stat-card">
           <p>Media Assets</p>
           <strong>{statsLoading ? '—' : (stats?.totalAssets ?? '—')}</strong>
         </article>
       </section>
 
-      {statsError && <p className="admin-editor-error">{statsError}</p>}
+      {statsError && <p className="admin-editor-error" style={{ marginTop: '12px' }}>{statsError}</p>}
 
-      <section className="dashboard-bottom-note">
+      <div className="dashboard-bottom-note">
         <Layers size={16} />
         <span>Data refreshes every 5 minutes</span>
-      </section>
+      </div>
     </div>
   );
 };
