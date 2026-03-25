@@ -47,14 +47,26 @@ export const PublicPage = () => {
   if (!page) {
     return (
       <div className="site-layout">
+        <header className="site-header">
+          <div className="header-content narrow-header">
+            <Link to="/" className="site-logo">FlareCMS</Link>
+          </div>
+        </header>
         <main className="not-found">
           <h1>404</h1>
           <p>{loadError || `Page "${slug}" not found.`}</p>
-          <Link to="/" className="btn-primary">Go Home</Link>
+          <Link to="/" className="btn-primary">← Go Home</Link>
         </main>
+        <footer className="site-footer">
+          <p>&copy; {new Date().getFullYear()} FlareCMS.</p>
+        </footer>
       </div>
     );
   }
+
+  const publishDate = new Date(
+    page?.publishedAt?.toMillis?.() ?? page?.createdAt?.toMillis?.() ?? Date.now()
+  ).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
     <div className="site-layout">
@@ -66,22 +78,19 @@ export const PublicPage = () => {
 
       <article className="public-article">
         {heroUrl && (
-          <div className="article-hero">
+          <div className="pub-article-hero">
             <img src={heroUrl} alt={page.featuredImage?.alt || 'Featured Image'} />
           </div>
         )}
-        
-        <div className="article-content">
-          <header className="article-title-section">
-            <h1 className="article-title">{page.title}</h1>
-            <div className="article-meta">
-              Published on {new Date(
-                page?.publishedAt?.toMillis?.() ?? page?.createdAt?.toMillis?.() ?? Date.now()
-              ).toLocaleDateString()}
-            </div>
+
+        <div className="pub-article-inner">
+          <header className="pub-article-header">
+            <Link to="/" className="pub-back-link">← Back to home</Link>
+            <h1 className="pub-article-title">{page.title}</h1>
+            <div className="pub-article-meta">Published {publishDate}</div>
           </header>
-          
-          <div className="article-body">
+
+          <div className="pub-article-body">
             <BlockRenderer blocks={page.blocks} />
           </div>
         </div>
@@ -93,3 +102,4 @@ export const PublicPage = () => {
     </div>
   );
 };
+
