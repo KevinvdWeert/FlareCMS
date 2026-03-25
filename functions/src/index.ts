@@ -28,6 +28,7 @@ export {
   deletePage,
   publishPage,
   unpublishPage,
+  setFrontPage,
 } from "./content";
 
 // Media management callables

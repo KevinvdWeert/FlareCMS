@@ -163,8 +163,11 @@ export const MediaManager = () => {
       const code = String(err?.code || '');
       if (code.includes('storage/unauthorized')) {
         setUploadError('Upload denied by Storage rules. Confirm your user has staff role (admin/editor) in users/{uid}.');
-      } else if (code.includes('storage/unknown')) {
-        setUploadError('Upload failed (possible bucket/CORS mismatch). Verify VITE_FIREBASE_STORAGE_BUCKET matches your Firebase bucket and deploy Storage rules.');
+      } else if (code.includes('storage/unknown') || isLikelyBucketOrCorsError(err)) {
+        setUploadError(
+          'Upload blocked by CORS policy. For local development, set VITE_USE_EMULATORS=true in .env.local and run `npm run emulators`. ' +
+          'For production, run `npm run deploy:cors` to apply the Storage CORS configuration.'
+        );
       } else {
         setUploadError(err?.message || 'Upload failed.');
       }

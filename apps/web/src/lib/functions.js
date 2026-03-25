@@ -214,6 +214,13 @@ export const callPublishPage = (id) =>
 export const callUnpublishPage = (id) =>
   httpsCallable(functions, 'unpublishPage')({ id });
 
+/**
+ * Sets or clears the site's front page. Admin only.
+ * @param {string|null} pageId - The page ID to set as front page, or null to clear.
+ */
+export const callSetFrontPage = (pageId) =>
+  httpsCallable(functions, 'setFrontPage')({ pageId });
+
 // -----------------------------------------------------------------------
 // Media Management
 // -----------------------------------------------------------------------
