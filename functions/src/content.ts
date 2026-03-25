@@ -36,12 +36,12 @@ export const createPage = functions.https.onCall(async (data, context) => {
   await requireStaff(context);
   const uid = context.auth!.uid;
 
-  const { title, slug, blocks = [], status = "draft", featuredImage = null } = (data as {
+  const { title, slug, blocks = [], status = "draft", featuredImagePath = null } = (data as {
     title?: string;
     slug?: string;
     blocks?: unknown[];
     status?: string;
-    featuredImage?: unknown;
+    featuredImagePath?: string | null;
   }) || {};
 
   if (!title || !validateTitle(title)) {
@@ -69,7 +69,7 @@ export const createPage = functions.https.onCall(async (data, context) => {
     slug: normalizedSlug,
     blocks: Array.isArray(blocks) ? blocks : [],
     status: finalStatus,
-    featuredImage: featuredImage || null,
+    featuredImagePath: typeof featuredImagePath === "string" ? featuredImagePath : null,
     createdBy: uid,
     updatedBy: uid,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -102,13 +102,13 @@ export const updatePage = functions.https.onCall(async (data, context) => {
   const callerData = await requireStaff(context);
   const uid = context.auth!.uid;
 
-  const { id, title, slug, blocks, status, featuredImage } = (data as {
+  const { id, title, slug, blocks, status, featuredImagePath } = (data as {
     id?: string;
     title?: string;
     slug?: string;
     blocks?: unknown[];
     status?: string;
-    featuredImage?: unknown;
+    featuredImagePath?: string | null;
   }) || {};
 
   if (!id || typeof id !== "string") {
@@ -166,8 +166,8 @@ export const updatePage = functions.https.onCall(async (data, context) => {
       updatePayload.publishedAt = admin.firestore.FieldValue.serverTimestamp();
     }
   }
-  if (featuredImage !== undefined) {
-    updatePayload.featuredImage = featuredImage;
+  if (featuredImagePath !== undefined) {
+    updatePayload.featuredImagePath = typeof featuredImagePath === "string" ? featuredImagePath : null;
   }
 
   await pageRef.update(updatePayload);

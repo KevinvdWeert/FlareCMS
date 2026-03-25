@@ -75,7 +75,20 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------------------
-    // Media Assets Collection
+    // Images Collection (local-upload media metadata)
+    // ---------------------------------------------------------------------------
+    match /images/{imageId} {
+      // Staff can read all images
+      allow read: if isStaff();
+      // Staff can create image records (written by the frontend after a local upload)
+      allow create: if isStaff();
+      // Only the image owner or an admin can update or delete
+      allow update: if isStaff() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow delete: if isStaff() && (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+
+    // ---------------------------------------------------------------------------
+    // Media Assets Collection (legacy — kept for backward compatibility)
     // ---------------------------------------------------------------------------
     match /mediaAssets/{assetId} {
       // Staff can read all assets

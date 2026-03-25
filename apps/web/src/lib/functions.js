@@ -59,7 +59,7 @@ const directGetDashboardStats = async () => {
     safeCount(async () => (await getDocs(collection(db, 'users'))).size, null),
     safeCount(async () => (await getDocs(query(collection(db, 'pages'), where('status', '==', 'published')))).size),
     safeCount(async () => (await getDocs(query(collection(db, 'pages'), where('status', '==', 'draft')))).size),
-    safeCount(async () => (await getDocs(collection(db, 'mediaAssets'))).size),
+    safeCount(async () => (await getDocs(collection(db, 'images'))).size),
   ]);
 
   return {
@@ -88,7 +88,7 @@ const directGetRecentActivity = async ({ limit: limitCount = 10 } = {}) => {
 const directListMediaAssets = async ({ pageSize = 20, startAfterId = null, mimeTypeFilter, ownerOnly = false } = {}) => {
   try {
     let q;
-    const base = collection(db, 'mediaAssets');
+    const base = collection(db, 'images');
 
     if (mimeTypeFilter) {
       q = query(base, where('mimeType', '==', mimeTypeFilter), orderBy('createdAt', 'desc'), limit(Math.min(pageSize, 100)));
@@ -97,7 +97,7 @@ const directListMediaAssets = async ({ pageSize = 20, startAfterId = null, mimeT
     }
 
     if (startAfterId) {
-      const cursor = await getDoc(doc(db, 'mediaAssets', startAfterId));
+      const cursor = await getDoc(doc(db, 'images', startAfterId));
       if (cursor.exists()) {
         q = query(q, startAfter(cursor));
       }
@@ -106,8 +106,6 @@ const directListMediaAssets = async ({ pageSize = 20, startAfterId = null, mimeT
     let docs = (await getDocs(q)).docs;
 
     if (ownerOnly) {
-      // Owner-only filter is applied client-side in fallback mode when no uid is provided.
-      // This keeps the function signature stable without threading auth uid here.
       docs = docs.filter((d) => !!d.data().ownerId);
     }
 

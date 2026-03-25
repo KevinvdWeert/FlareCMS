@@ -16,3 +16,6 @@ firebase-debug.log
 firebase-debug.*.log
 firestore-debug.log
 ui-debug.log
+# Uploaded images — tracked by Git only as an empty folder placeholder
+/images/*
+!/images/.gitkeep

@@ -14,6 +14,8 @@
     "functions:watch": "cd functions && npm run watch",
     "web:dev": "cd apps/web && npm run dev",
     "web:build": "cd apps/web && npm run build",
+    "server:dev": "node server/index.js",
+    "dev": "concurrently --names \"web,server\" --prefix-colors \"cyan,magenta\" \"npm run web:dev\" \"npm run server:dev\"",
     "deploy:rules": "firebase deploy --only firestore:rules,storage:rules",
     "deploy:cors": "firebase storage:cors:set firebase/cors.json",
     "deploy:indexes": "firebase deploy --only firestore:indexes",
@@ -22,10 +24,13 @@
     "deploy": "npm run functions:build && npm run web:build && firebase deploy"
   },
   "dependencies": {
+    "express": "^5.0.1",
     "firebase-admin": "^12.0.0",
+    "multer": "^2.1.1",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
+    "concurrently": "^9.1.2",
     "firebase-tools": "^13.29.3"
   }
 }

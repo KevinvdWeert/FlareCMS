@@ -1,12 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { CloudUpload, Filter, Grid3X3, List, Tag, Trash, RefreshCw } from 'lucide-react';
-import { ref, uploadBytes, getDownloadURL, getStorage } from 'firebase/storage';
-import { app, storage } from '../../lib/firebase';
+import { CloudUpload, Grid3X3, List, Tag, Trash, RefreshCw } from 'lucide-react';
 import { useAuth } from '../auth/useAuth';
-import { callRegisterMediaAsset, callListMediaAssets, callDeleteMediaAsset } from '../../lib/functions';
-import { validateImageFile } from '../../lib/storage';
+import { validateImageFile, uploadImageToServer } from '../../lib/storage';
+import { createImageRecord, getImagesPaginated, deleteImageRecord } from '../../lib/firestore';
 import { parseFirestoreTimestamp } from '../../lib/firestore';
-import { v4 as uuidv4 } from 'uuid';
 
 const MIME_LABELS = {
   'image/jpeg': 'JPEG',
@@ -23,49 +20,16 @@ const formatBytes = (bytes) => {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 };
 
-const getAlternateBucket = (bucket) => {
-  if (!bucket) return null;
-  if (bucket.endsWith('.firebasestorage.app')) {
-    return `${bucket.replace(/\.firebasestorage\.app$/, '')}.appspot.com`;
-  }
-  if (bucket.endsWith('.appspot.com')) {
-    return `${bucket.replace(/\.appspot\.com$/, '')}.firebasestorage.app`;
-  }
-  return null;
-};
-
-const getPreferredBucket = (bucket) => {
-  if (!bucket) return null;
-  if (bucket.endsWith('.firebasestorage.app')) {
-    return `${bucket.replace(/\.firebasestorage\.app$/, '')}.appspot.com`;
-  }
-  return bucket;
-};
-
-const isLikelyBucketOrCorsError = (err) => {
-  const code = String(err?.code || '');
-  const msg = String(err?.message || '').toLowerCase();
-  return (
-    code.includes('storage/unknown') ||
-    msg.includes('cors') ||
-    msg.includes('preflight') ||
-    msg.includes('xmlhttprequest') ||
-    msg.includes('failed to fetch')
-  );
-};
-
 export const MediaManager = () => {
   const { user } = useAuth();
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [cursor, setCursor] = useState(null);
   const [hasMore, setHasMore] = useState(false);
-  const [lastId, setLastId] = useState(null);
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState('');
   const [selected, setSelected] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
   const [deletingId, setDeletingId] = useState('');
   const fileInputRef = useRef(null);
@@ -74,16 +38,13 @@ export const MediaManager = () => {
     setLoading(true);
     setError('');
     try {
-      const result = await callListMediaAssets({
+      const result = await getImagesPaginated({
         pageSize: 20,
-        startAfterId: reset ? null : lastId,
+        cursor: reset ? null : cursor,
       });
-      const { assets: newAssets, hasMore: more } = result.data;
-      setAssets((prev) => (reset ? newAssets : [...prev, ...newAssets]));
-      setHasMore(more);
-      if (newAssets.length > 0) {
-        setLastId(newAssets[newAssets.length - 1].id);
-      }
+      setAssets((prev) => (reset ? result.items : [...prev, ...result.items]));
+      setCursor(result.nextCursor);
+      setHasMore(result.hasMore);
     } catch (err) {
       console.error('Failed to load media assets:', err);
       setError('Failed to load media assets. ' + (err?.message || ''));
@@ -108,72 +69,22 @@ export const MediaManager = () => {
       return;
     }
 
-    const ext = file.name.split('.').pop().toLowerCase();
-    const uniqueName = `${uuidv4()}.${ext}`;
-    const storagePath = `media/${user.uid}/${uniqueName}`;
-    const configuredBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET;
-    const preferredBucket = getPreferredBucket(configuredBucket);
-    const alternateBucket = getAlternateBucket(preferredBucket);
-
     setUploading(true);
-    setUploadProgress(0);
-
     try {
-      const attemptedBuckets = [];
-      const uploadToBucket = async (bucket) => {
-        if (!bucket) {
-          const fallbackRef = ref(storage, storagePath);
-          attemptedBuckets.push('default-sdk-storage');
-          await uploadBytes(fallbackRef, file);
-          return;
-        }
-        attemptedBuckets.push(bucket);
-        const bucketStorage = getStorage(app, `gs://${bucket}`);
-        const bucketRef = ref(bucketStorage, storagePath);
-        await uploadBytes(bucketRef, file);
-      };
-
-      try {
-        await uploadToBucket(preferredBucket);
-      } catch (primaryErr) {
-        if (!alternateBucket || !isLikelyBucketOrCorsError(primaryErr) || alternateBucket === preferredBucket) {
-          throw primaryErr;
-        }
-
-        console.warn(`Primary bucket upload failed, retrying with alternate bucket: ${alternateBucket}`);
-        try {
-          await uploadToBucket(alternateBucket);
-        } catch (secondaryErr) {
-          secondaryErr.message = `${secondaryErr?.message || 'Upload failed.'} Tried buckets: ${attemptedBuckets.join(', ')}`;
-          throw secondaryErr;
-        }
-      }
-
-      setUploadProgress(100);
-
-      await callRegisterMediaAsset({
-        storagePath,
-        fileName: file.name,
-        mimeType: file.type,
-        sizeBytes: file.size,
+      const result = await uploadImageToServer(file);
+      await createImageRecord({
+        path: result.path,
+        fileName: result.fileName,
+        mimeType: result.mimeType,
+        sizeBytes: result.sizeBytes,
+        ownerId: user.uid,
       });
       await loadAssets({ reset: true });
     } catch (err) {
       console.error('Upload error:', err);
-      const code = String(err?.code || '');
-      if (code.includes('storage/unauthorized')) {
-        setUploadError('Upload denied by Storage rules. Confirm your user has staff role (admin/editor) in users/{uid}.');
-      } else if (code.includes('storage/unknown') || isLikelyBucketOrCorsError(err)) {
-        setUploadError(
-          'Upload blocked by CORS policy. For local development, set VITE_USE_EMULATORS=true in .env.local and run `npm run emulators`. ' +
-          'For production, run `npm run deploy:cors` to apply the Storage CORS configuration.'
-        );
-      } else {
-        setUploadError(err?.message || 'Upload failed.');
-      }
+      setUploadError(err?.message || 'Upload failed. Make sure the upload server is running (`npm run server:dev`).');
     } finally {
       setUploading(false);
-      setUploadProgress(0);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -183,29 +94,16 @@ export const MediaManager = () => {
     setDeletingId(asset.id);
     setError('');
     try {
-      await callDeleteMediaAsset(asset.id);
+      await deleteImageRecord(asset.id);
       setAssets((prev) => prev.filter((a) => a.id !== asset.id));
       if (selected?.id === asset.id) {
         setSelected(null);
-        setPreviewUrl(null);
       }
     } catch (err) {
       console.error('Delete error:', err);
       setError(err?.message || 'Failed to delete asset.');
     } finally {
       setDeletingId('');
-    }
-  };
-
-  const handleSelect = async (asset) => {
-    setSelected(asset);
-    setPreviewUrl(null);
-    try {
-      const storageRef = ref(storage, asset.storagePath);
-      const url = await getDownloadURL(storageRef);
-      setPreviewUrl(url);
-    } catch {
-      setPreviewUrl(null);
     }
   };
 
@@ -237,7 +135,7 @@ export const MediaManager = () => {
           </button>
           <label className="admin-button-primary" style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}>
             <CloudUpload size={15} />
-            <span>{uploading ? `Uploading ${uploadProgress}%` : 'Upload'}</span>
+            <span>{uploading ? 'Uploading…' : 'Upload'}</span>
             <input
               ref={fileInputRef}
               type="file"
@@ -273,11 +171,15 @@ export const MediaManager = () => {
               <article
                 key={asset.id}
                 className={`admin-surface media-card ${selected?.id === asset.id ? 'is-active' : ''}`}
-                onClick={() => handleSelect(asset)}
+                onClick={() => setSelected(asset)}
                 style={{ cursor: 'pointer' }}
               >
                 <div className="media-card-art">
-                  <span>{(asset.fileName || 'A').charAt(0).toUpperCase()}</span>
+                  {asset.path ? (
+                    <img src={asset.path} alt={asset.fileName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <span>{(asset.fileName || 'A').charAt(0).toUpperCase()}</span>
+                  )}
                 </div>
                 <div className="media-card-meta">
                   <p title={asset.fileName}>{asset.fileName}</p>
@@ -339,9 +241,9 @@ export const MediaManager = () => {
           <h3>Asset Details</h3>
           {selected ? (
             <>
-              {previewUrl ? (
+              {selected.path ? (
                 <div className="media-side-preview" style={{ overflow: 'hidden' }}>
-                  <img src={previewUrl} alt={selected.fileName} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  <img src={selected.path} alt={selected.fileName} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 </div>
               ) : (
                 <div className="media-side-preview">
@@ -363,12 +265,10 @@ export const MediaManager = () => {
                   <span>Type</span>
                   <b>{MIME_LABELS[selected.mimeType] || selected.mimeType || '—'}</b>
                 </div>
-                {selected.dimensions && (
-                  <div>
-                    <span>Dimensions</span>
-                    <b>{selected.dimensions.width} × {selected.dimensions.height}</b>
-                  </div>
-                )}
+                <div>
+                  <span>Path</span>
+                  <b style={{ wordBreak: 'break-all', fontSize: '11px' }}>{selected.path || '—'}</b>
+                </div>
                 <div>
                   <span>Used in</span>
                   <b>{(selected.usedInPages || []).length} page{(selected.usedInPages || []).length !== 1 ? 's' : ''}</b>

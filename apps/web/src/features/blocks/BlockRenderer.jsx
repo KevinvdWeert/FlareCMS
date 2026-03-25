@@ -28,24 +28,43 @@ const Block = ({ block }) => {
   }
 
   if (block.type === 'image') {
-    if (!block.storagePath) return null;
-    return <RenderedImage block={block} />;
+    // Prefer new imagePath field; fall back to legacy storagePath for existing data
+    const imageSrc = block.imagePath || block.storagePath || null;
+    if (!imageSrc) return null;
+    return <RenderedImage src={imageSrc} alt={block.alt} caption={block.caption} />;
   }
 
   return null;
 };
 
-// Extracted component to handle async image url fetching
-const RenderedImage = ({ block }) => {
-  const { url, error } = useImageUrl(block.storagePath);
+/**
+ * Renders an image block.  Uses useImageUrl so that:
+ *  - relative paths (/images/…) render directly
+ *  - absolute URLs render directly
+ *  - legacy Firebase Storage paths show a graceful placeholder
+ */
+const RenderedImage = ({ src, alt, caption }) => {
+  const { url, error } = useImageUrl(src);
 
-  if (error) return <div style={{ background: '#fee2e2', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', fontSize: '14px' }}>Failed to load image.</div>;
-  if (!url) return <div style={{ background: '#f1f5f9', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>Loading image...</div>;
+  if (error) {
+    return (
+      <div style={{ background: '#fee2e2', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', fontSize: '14px' }}>
+        Image not available.
+      </div>
+    );
+  }
+  if (!url) {
+    return (
+      <div style={{ background: '#f1f5f9', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+        Loading image…
+      </div>
+    );
+  }
 
   return (
     <figure style={{ margin: 0 }}>
-      <img src={url} alt={block.alt || ''} style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px' }} />
-      {block.caption && <figcaption style={{ textAlign: 'center', fontSize: '14px', color: '#64748b', marginTop: '10px' }}>{block.caption}</figcaption>}
+      <img src={url} alt={alt || ''} style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px' }} />
+      {caption && <figcaption style={{ textAlign: 'center', fontSize: '14px', color: '#64748b', marginTop: '10px' }}>{caption}</figcaption>}
     </figure>
   );
 };
