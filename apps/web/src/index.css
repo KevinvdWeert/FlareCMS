@@ -3024,6 +3024,312 @@ body {
   cursor: pointer;
 }
 
+/* =========================================
+   PAGE EDITOR — ADVANCED FIELDS
+========================================= */
+
+.admin-editor-section-divider {
+  height: 1px;
+  background: rgba(212, 196, 183, 0.3);
+  margin: 20px 0;
+}
+
+.admin-editor-section-heading {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #1b1c15;
+  margin-bottom: 14px;
+}
+
+.admin-editor-field-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #50453b;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.admin-editor-char-count {
+  display: block;
+  text-align: right;
+  font-size: 0.7rem;
+  color: #82756a;
+  margin-top: 4px;
+}
+
+.admin-editor-char-warn {
+  color: #ba1a1a;
+}
+
+.admin-editor-textarea {
+  resize: vertical;
+  min-height: 72px;
+  line-height: 1.5;
+}
+
+/* SEO score badge */
+.admin-editor-seo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.admin-editor-seo-header .admin-editor-section-heading {
+  margin-bottom: 0;
+}
+
+.admin-editor-seo-score {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #15803d;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* Scheduling note */
+.admin-editor-coming-soon {
+  font-size: 0.7rem;
+  color: #82756a;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Slug prefix row */
+.admin-editor-slug-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 8px;
+}
+
+.admin-editor-slug-field {
+  flex: 1;
+}
+
+.admin-editor-slug-prefix {
+  font-size: 0.8rem;
+  color: #50453b;
+}
+
+.admin-editor-slug-preview {
+  font-size: 0.72rem;
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
+.admin-editor-slug-preview code {
+  background: rgba(212, 196, 183, 0.2);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+}
+
+/* Tags */
+.admin-editor-tags-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.admin-editor-tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #e4e3d7;
+  color: #7a542c;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.admin-editor-tag-remove {
+  border: none;
+  background: transparent;
+  color: #82756a;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.admin-editor-tag-remove:hover {
+  color: #ba1a1a;
+}
+
+.admin-editor-tag-input-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  border: 1px dashed rgba(130, 117, 106, 0.5);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.admin-editor-tag-input {
+  border: none;
+  background: transparent;
+  font-size: 0.7rem;
+  padding: 4px 10px;
+  width: 90px;
+  outline: none;
+  color: #1b1c15;
+  font-family: inherit;
+}
+
+.admin-editor-tag-input::placeholder {
+  color: #82756a;
+}
+
+.admin-editor-tag-add-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 4px 8px;
+  color: #7a542c;
+  display: flex;
+  align-items: center;
+}
+
+.admin-editor-tag-add-btn:hover {
+  color: #966c42;
+}
+
+.admin-editor-tag-error {
+  font-size: 0.72rem;
+  color: #ba1a1a;
+  margin-top: 6px;
+}
+
+/* =========================================
+   USER MANAGEMENT — STATS & REDESIGN
+========================================= */
+
+/* Stats bento grid */
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.admin-stat-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 16px rgba(27, 28, 21, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-stat-icon {
+  font-size: 20px !important;
+  color: #7a542c;
+}
+
+.admin-stat-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #82756a;
+  margin: 0;
+}
+
+.admin-stat-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #1b1c15;
+  line-height: 1;
+}
+
+/* Search & action bar */
+.admin-user-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.admin-search-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid rgba(212, 196, 183, 0.5);
+  border-radius: 8px;
+  padding: 8px 14px;
+  flex: 1;
+  max-width: 480px;
+}
+
+.admin-search-wrapper .material-symbols-outlined {
+  font-size: 18px !important;
+  color: #82756a;
+  flex-shrink: 0;
+}
+
+.admin-search-input {
+  border: none;
+  background: transparent;
+  font-size: 0.85rem;
+  color: #1b1c15;
+  width: 100%;
+  outline: none;
+  font-family: inherit;
+}
+
+.admin-search-input::placeholder {
+  color: #82756a;
+}
+
+.admin-user-list-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-invite-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #7a542c 0%, #966c42 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 18px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(122, 84, 44, 0.3);
+  transition: opacity 0.2s;
+  font-family: inherit;
+}
+
+.admin-invite-btn:hover {
+  opacity: 0.9;
+}
+
+/* Last active cell */
+.admin-last-active {
+  font-size: 0.82rem;
+  color: #82756a;
+}
+
 @media (max-width: 1120px) {
   .dashboard-grid,
   .media-layout {
@@ -3060,6 +3366,10 @@ body {
     gap: 12px;
     align-items: flex-start;
   }
+
+  .admin-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 760px) {
@@ -3081,6 +3391,10 @@ body {
   .media-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .admin-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 640px) {
@@ -3096,6 +3410,19 @@ body {
   }
 
   .dashboard-bento-wide {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .admin-user-list-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-editor-slug-row {
     grid-template-columns: 1fr;
   }
 }

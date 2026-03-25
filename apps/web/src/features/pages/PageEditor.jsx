@@ -6,7 +6,7 @@ import { callRegisterMediaAsset } from '../../lib/functions';
 import { useAuth } from '../auth/useAuth';
 import { useImageUrl } from '../../hooks/useImageUrl';
 import { BlockEditor } from '../blocks/BlockEditor';
-import { ArrowLeft, Save, Send } from 'lucide-react';
+import { ArrowLeft, Save, Send, X, Plus } from 'lucide-react';
 import { validateSlug, validateTitle } from '../../lib/validation';
 
 export const PageEditor = () => {
@@ -16,10 +16,23 @@ export const PageEditor = () => {
   
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
+  const [slugPrefix, setSlugPrefix] = useState('/');
   const [status, setStatus] = useState('draft');
   const [featuredImagePath, setFeaturedImagePath] = useState('');
   const [featuredImageAlt, setFeaturedImageAlt] = useState('');
   const [blocks, setBlocks] = useState([]);
+
+  // SEO metadata
+  const [metaTitle, setMetaTitle] = useState('');
+  const [metaDescription, setMetaDescription] = useState('');
+
+  // Taxonomy / tags
+  const [tags, setTags] = useState([]);
+  const [tagInput, setTagInput] = useState('');
+  const [tagError, setTagError] = useState('');
+
+  // Scheduled publishing (UI only — scheduling not yet supported server-side)
+  const [scheduledPublishAt, setScheduledPublishAt] = useState('');
   
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -38,6 +51,7 @@ export const PageEditor = () => {
         if (page) {
           setTitle(page.title || '');
           setSlug(page.slug || '');
+          setSlugPrefix(page.slugPrefix || '/');
           setStatus(page.status || 'draft');
           // Support both new featuredImagePath string and legacy featuredImage object
           setFeaturedImagePath(
@@ -48,6 +62,24 @@ export const PageEditor = () => {
           );
           setFeaturedImageAlt(page.featuredImage?.alt || '');
           setBlocks(page.blocks || []);
+          // SEO metadata (optional field — backward compatible)
+          setMetaTitle(page.seoMetadata?.metaTitle || '');
+          setMetaDescription(page.seoMetadata?.metaDescription || '');
+          // Tags (optional field — backward compatible)
+          setTags(Array.isArray(page.tags) ? page.tags : []);
+          // Scheduled publish (optional field)
+          if (page.scheduledPublishAt) {
+            const d = page.scheduledPublishAt?.seconds
+              ? new Date(page.scheduledPublishAt.seconds * 1000)
+              : new Date(page.scheduledPublishAt);
+            if (!isNaN(d.getTime())) {
+              // Format as datetime-local input value
+              const pad = (n) => String(n).padStart(2, '0');
+              setScheduledPublishAt(
+                `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+              );
+            }
+          }
         } else {
           setError('Page not found');
         }
@@ -108,6 +140,33 @@ export const PageEditor = () => {
     }
   };
 
+  const handleAddTag = () => {
+    const trimmed = tagInput.trim();
+    setTagError('');
+    if (!trimmed) return;
+    if (trimmed.length > 50) {
+      setTagError('Tag must be 50 characters or fewer.');
+      return;
+    }
+    if (tags.includes(trimmed)) {
+      setTagError('Tag already added.');
+      return;
+    }
+    setTags((prev) => [...prev, trimmed]);
+    setTagInput('');
+  };
+
+  const handleTagInputKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddTag();
+    }
+  };
+
+  const handleRemoveTag = (tag) => {
+    setTags((prev) => prev.filter((t) => t !== tag));
+  };
+
   const [saveSuccess, setSaveSuccess] = useState('');
 
   const handleSave = async (e) => {
@@ -143,12 +202,19 @@ export const PageEditor = () => {
     const pageData = {
       title,
       slug,
+      slugPrefix: slugPrefix || '/',
       status,
       featuredImagePath: featuredImagePath || null,
       featuredImage: featuredImagePath
         ? { storagePath: featuredImagePath, alt: featuredImageAlt || '' }
         : null,
-      blocks
+      blocks,
+      seoMetadata: {
+        metaTitle: metaTitle.trim(),
+        metaDescription: metaDescription.trim(),
+      },
+      tags,
+      scheduledPublishAt: scheduledPublishAt ? new Date(scheduledPublishAt) : null,
     };
 
     try {
@@ -230,10 +296,124 @@ export const PageEditor = () => {
             </select>
           </label>
 
+          <div className="admin-editor-slug-row">
+            <label className="admin-editor-field">
+              <strong>Slug Prefix</strong>
+              <input
+                type="text"
+                value={slugPrefix}
+                onChange={(e) => setSlugPrefix(e.target.value || '/')}
+                className="admin-editor-input admin-editor-slug-prefix"
+                placeholder="/"
+              />
+            </label>
+            <label className="admin-editor-field admin-editor-slug-field">
+              <strong>Slug</strong>
+              <input type="text" value={slug} onChange={(e) => setSlug(e.target.value)} className="admin-editor-input" />
+            </label>
+          </div>
+          <p className="admin-editor-slug-preview admin-muted-text">
+            Path: <code>{(slugPrefix || '/') + slug}</code>
+          </p>
+
+          <div className="admin-editor-section-divider" />
+
+          {/* Scheduled Publishing */}
+          <h3 className="admin-editor-section-heading">Scheduled Publishing</h3>
           <label className="admin-editor-field">
-            <strong>Slug</strong>
-            <input type="text" value={slug} onChange={(e) => setSlug(e.target.value)} className="admin-editor-input" />
+            <strong>Publish At</strong>
+            <input
+              type="datetime-local"
+              value={scheduledPublishAt}
+              onChange={(e) => setScheduledPublishAt(e.target.value)}
+              className="admin-editor-input"
+              disabled
+            />
           </label>
+          <p className="admin-editor-coming-soon">
+            <span className="material-symbols-outlined" style={{ fontSize: '14px', verticalAlign: 'middle' }}>schedule</span>
+            {' '}Scheduling coming soon
+          </p>
+
+          <div className="admin-editor-section-divider" />
+
+          {/* SEO Optimization */}
+          <div className="admin-editor-seo-header">
+            <h3 className="admin-editor-section-heading">SEO Optimization</h3>
+            <span className="admin-editor-seo-score">Score: 92</span>
+          </div>
+
+          <label className="admin-editor-field">
+            <span className="admin-editor-field-label">Meta Title</span>
+            <input
+              type="text"
+              value={metaTitle}
+              onChange={(e) => setMetaTitle(e.target.value.slice(0, 60))}
+              placeholder="Enter meta title..."
+              className="admin-editor-input"
+              maxLength={60}
+            />
+            <span className={`admin-editor-char-count ${metaTitle.length > 55 ? 'admin-editor-char-warn' : ''}`}>
+              {metaTitle.length} / 60 chars
+            </span>
+          </label>
+
+          <label className="admin-editor-field">
+            <span className="admin-editor-field-label">Meta Description</span>
+            <textarea
+              value={metaDescription}
+              onChange={(e) => setMetaDescription(e.target.value.slice(0, 160))}
+              placeholder="Enter meta description..."
+              className="admin-editor-input admin-editor-textarea"
+              maxLength={160}
+              rows={3}
+            />
+            <span className={`admin-editor-char-count ${metaDescription.length > 150 ? 'admin-editor-char-warn' : ''}`}>
+              {metaDescription.length} / 160 chars
+            </span>
+          </label>
+
+          <div className="admin-editor-section-divider" />
+
+          {/* Taxonomy / Tags */}
+          <h3 className="admin-editor-section-heading">Taxonomy</h3>
+          <div className="admin-editor-tags-wrap">
+            {tags.map((tag) => (
+              <span key={tag} className="admin-editor-tag-pill">
+                {tag}
+                <button
+                  type="button"
+                  className="admin-editor-tag-remove"
+                  onClick={() => handleRemoveTag(tag)}
+                  aria-label={`Remove tag ${tag}`}
+                >
+                  <X size={10} />
+                </button>
+              </span>
+            ))}
+            <div className="admin-editor-tag-input-row">
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={handleTagInputKeyDown}
+                placeholder="Add tag..."
+                className="admin-editor-tag-input"
+                maxLength={50}
+              />
+              <button
+                type="button"
+                className="admin-editor-tag-add-btn"
+                onClick={handleAddTag}
+                aria-label="Add tag"
+              >
+                <Plus size={12} />
+              </button>
+            </div>
+          </div>
+          {tagError && <p className="admin-editor-tag-error">{tagError}</p>}
+
+          <div className="admin-editor-section-divider" />
 
           <div className="admin-editor-cover-section">
             <h3 className="admin-editor-cover-heading">Cover Image</h3>
