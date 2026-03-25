@@ -33,8 +33,12 @@ export const PublicPage = () => {
     fetchPageContent();
   }, [slug]);
 
-  const heroStoragePath = page?.featuredImage?.storagePath || null;
-  const { url: heroUrl } = useImageUrl(heroStoragePath);
+  const heroImagePath =
+    page?.featuredImagePath ||
+    page?.featuredImage?.storagePath ||
+    page?.featuredImage?.path ||
+    null;
+  const { url: heroUrl } = useImageUrl(heroImagePath);
 
   if (loading) {
     return (
@@ -79,7 +83,7 @@ export const PublicPage = () => {
       <article className="public-article">
         {heroUrl && (
           <div className="pub-article-hero">
-            <img src={heroUrl} alt={page.featuredImage?.alt || 'Featured Image'} />
+            <img src={heroUrl} alt={page.title || 'Featured Image'} />
           </div>
         )}
 

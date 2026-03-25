@@ -151,6 +151,68 @@ export const deletePage = async (id) => {
   await deleteDoc(pageRef);
 };
 
+// ---------------------------------------------------------------------------
+// Images Collection
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a new image metadata record in the `images` collection.
+ *
+ * @param {{ path: string, fileName: string, mimeType: string, sizeBytes: number, ownerId: string, tags?: string[] }} imageData
+ * @returns {Promise<string>} The new document ID.
+ */
+export const createImageRecord = async (imageData) => {
+  const imagesRef = collection(db, 'images');
+  const newDocRef = doc(imagesRef);
+  await setDoc(newDocRef, {
+    path: imageData.path,
+    fileName: imageData.fileName,
+    mimeType: imageData.mimeType,
+    sizeBytes: imageData.sizeBytes || null,
+    ownerId: imageData.ownerId,
+    tags: Array.isArray(imageData.tags) ? imageData.tags : [],
+    usedInPages: [],
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return newDocRef.id;
+};
+
+/**
+ * Lists images with cursor-based pagination.
+ *
+ * @param {{ pageSize?: number, cursor?: import('firebase/firestore').QueryDocumentSnapshot|null }} opts
+ * @returns {Promise<{ items: object[], nextCursor: import('firebase/firestore').QueryDocumentSnapshot|null, hasMore: boolean }>}
+ */
+export const getImagesPaginated = async ({ pageSize = 20, cursor = null } = {}) => {
+  const imagesRef = collection(db, 'images');
+  const constraints = [orderBy('createdAt', 'desc'), limit(pageSize + 1)];
+  if (cursor) {
+    constraints.push(startAfter(cursor));
+  }
+  const q = query(imagesRef, ...constraints);
+  const snap = await getDocs(q);
+  const docs = snap.docs;
+  const hasMore = docs.length > pageSize;
+  const pageDocs = docs.slice(0, pageSize);
+  return {
+    items: pageDocs.map((d) => ({ id: d.id, ...d.data() })),
+    nextCursor: hasMore ? pageDocs[pageDocs.length - 1] : null,
+    hasMore,
+  };
+};
+
+/**
+ * Deletes an image metadata record from the `images` collection.
+ * Note: the physical file in the `images/` folder is NOT deleted by this call.
+ *
+ * @param {string} id
+ */
+export const deleteImageRecord = async (id) => {
+  const imgRef = doc(db, 'images', id);
+  await deleteDoc(imgRef);
+};
+
 /**
  * Fetches the general site settings document.
  * @returns {Promise<object|null>}

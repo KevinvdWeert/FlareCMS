@@ -13,7 +13,8 @@ export const BlockEditor = ({ blocks, setBlocks }) => {
     } else if (type === 'paragraph') {
       newBlock.text = '';
     } else if (type === 'image') {
-      newBlock.storagePath = '';
+      newBlock.imageId = '';
+      newBlock.imagePath = '';
       newBlock.alt = '';
       newBlock.caption = '';
     }
@@ -133,8 +134,23 @@ export const BlockEditor = ({ blocks, setBlocks }) => {
                 />
                 {block.storagePath && (
                   <div className="block-image-meta">
-                    <p><strong>Image Path:</strong> {block.storagePath}</p>
-                    <p><strong>Alt:</strong> {block.alt}</p>
+                    <img
+                      src={block.imagePath}
+                      alt={block.alt || ''}
+                      style={{ maxWidth: '100%', maxHeight: '120px', objectFit: 'cover', borderRadius: '4px', marginBottom: '6px' }}
+                    />
+                    <p><strong>Path:</strong> {block.imagePath}</p>
+                    <button
+                      type="button"
+                      className="block-icon-btn"
+                      onClick={() => {
+                        const newBlocks = [...blocks];
+                        newBlocks[index] = { ...newBlocks[index], imageId: '', imagePath: '', alt: '' };
+                        setBlocks(newBlocks);
+                      }}
+                    >
+                      Replace image
+                    </button>
                   </div>
                 )}
                 <input

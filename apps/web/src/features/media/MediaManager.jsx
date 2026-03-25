@@ -31,13 +31,12 @@ const guessMimeType = (path) => {
 export const MediaManager = () => {
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [cursor, setCursor] = useState(null);
   const [hasMore, setHasMore] = useState(false);
-  const [lastId, setLastId] = useState(null);
   const [error, setError] = useState('');
   const [savingPath, setSavingPath] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [selected, setSelected] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
   const [deletingId, setDeletingId] = useState('');
   const [pathInput, setPathInput] = useState('');
@@ -47,16 +46,13 @@ export const MediaManager = () => {
     setLoading(true);
     setError('');
     try {
-      const result = await callListMediaAssets({
+      const result = await getImagesPaginated({
         pageSize: 20,
-        startAfterId: reset ? null : lastId,
+        cursor: reset ? null : cursor,
       });
-      const { assets: newAssets, hasMore: more } = result.data;
-      setAssets((prev) => (reset ? newAssets : [...prev, ...newAssets]));
-      setHasMore(more);
-      if (newAssets.length > 0) {
-        setLastId(newAssets[newAssets.length - 1].id);
-      }
+      setAssets((prev) => (reset ? result.items : [...prev, ...result.items]));
+      setCursor(result.nextCursor);
+      setHasMore(result.hasMore);
     } catch (err) {
       console.error('Failed to load media assets:', err);
       setError('Failed to load media assets. ' + (err?.message || ''));
@@ -108,11 +104,10 @@ export const MediaManager = () => {
     setDeletingId(asset.id);
     setError('');
     try {
-      await callDeleteMediaAsset(asset.id);
+      await deleteImageRecord(asset.id);
       setAssets((prev) => prev.filter((a) => a.id !== asset.id));
       if (selected?.id === asset.id) {
         setSelected(null);
-        setPreviewUrl(null);
       }
     } catch (err) {
       console.error('Delete error:', err);
@@ -206,11 +201,15 @@ export const MediaManager = () => {
               <article
                 key={asset.id}
                 className={`admin-surface media-card ${selected?.id === asset.id ? 'is-active' : ''}`}
-                onClick={() => handleSelect(asset)}
+                onClick={() => setSelected(asset)}
                 style={{ cursor: 'pointer' }}
               >
                 <div className="media-card-art">
-                  <span>{(asset.fileName || 'A').charAt(0).toUpperCase()}</span>
+                  {asset.path ? (
+                    <img src={asset.path} alt={asset.fileName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <span>{(asset.fileName || 'A').charAt(0).toUpperCase()}</span>
+                  )}
                 </div>
                 <div className="media-card-meta">
                   <p title={asset.fileName}>{asset.fileName}</p>
@@ -270,9 +269,9 @@ export const MediaManager = () => {
           <h3>Asset Details</h3>
           {selected ? (
             <>
-              {previewUrl ? (
+              {selected.path ? (
                 <div className="media-side-preview" style={{ overflow: 'hidden' }}>
-                  <img src={previewUrl} alt={selected.fileName} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  <img src={selected.path} alt={selected.fileName} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 </div>
               ) : (
                 <div className="media-side-preview">
@@ -294,12 +293,10 @@ export const MediaManager = () => {
                   <span>Type</span>
                   <b>{MIME_LABELS[selected.mimeType] || selected.mimeType || '—'}</b>
                 </div>
-                {selected.dimensions && (
-                  <div>
-                    <span>Dimensions</span>
-                    <b>{selected.dimensions.width} × {selected.dimensions.height}</b>
-                  </div>
-                )}
+                <div>
+                  <span>Path</span>
+                  <b style={{ wordBreak: 'break-all', fontSize: '11px' }}>{selected.path || '—'}</b>
+                </div>
                 <div>
                   <span>Used in</span>
                   <b>{(selected.usedInPages || []).length} page{(selected.usedInPages || []).length !== 1 ? 's' : ''}</b>

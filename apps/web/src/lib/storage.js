@@ -1,8 +1,4 @@
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from './firebase';
-import { v4 as uuidv4 } from 'uuid';
-
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
 const MEDIA_BASE_URL = String(import.meta.env.VITE_MEDIA_BASE_URL || '').trim().replace(/\/$/, '');
 
@@ -41,31 +37,32 @@ export const validateImageFile = (file) => {
     throw new Error(`Invalid file type "${file.type}". Only JPEG, PNG, GIF, WebP, and SVG images are allowed.`);
   }
   if (file.size > MAX_FILE_SIZE_BYTES) {
-    throw new Error(`File is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum allowed size is 5 MB.`);
+    throw new Error(`File is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum allowed size is 10 MB.`);
   }
 };
 
-export const uploadFeaturedImage = async (pageId, file) => {
+/**
+ * Uploads an image file to the local upload server at POST /api/upload-image.
+ * Returns the relative web path, original filename, MIME type, and byte size.
+ *
+ * @param {File} file
+ * @returns {Promise<{ path: string, fileName: string, mimeType: string, sizeBytes: number }>}
+ */
+export const uploadImageToServer = async (file) => {
   validateImageFile(file);
-  const ext = file.name.split('.').pop().toLowerCase();
-  const filename = `${uuidv4()}.${ext}`;
-  const storagePath = `pages/${pageId}/featured/${filename}`;
-  const storageRef = ref(storage, storagePath);
-  
-  await uploadBytes(storageRef, file);
-  return { storagePath, alt: file.name };
-};
 
-export const uploadBlockImage = async (pageId, file) => {
-  validateImageFile(file);
-  const ext = file.name.split('.').pop().toLowerCase();
-  const filename = `${uuidv4()}.${ext}`;
-  const storagePath = `pages/${pageId}/blocks/${filename}`;
-  const storageRef = ref(storage, storagePath);
-  
-  await uploadBytes(storageRef, file);
-  return { storagePath, alt: file.name };
-};
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch('/api/upload-image', {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `Upload failed with status ${response.status}.`);
+  }
 
 export const getImageUrl = async (storagePath) => {
   if (!storagePath) return null;

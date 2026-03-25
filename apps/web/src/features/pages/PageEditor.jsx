@@ -14,7 +14,7 @@ export const PageEditor = () => {
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
   const [status, setStatus] = useState('draft');
-  const [featuredImage, setFeaturedImage] = useState(null);
+  const [featuredImagePath, setFeaturedImagePath] = useState('');
   const [blocks, setBlocks] = useState([]);
   
   const [loading, setLoading] = useState(false);
@@ -30,7 +30,13 @@ export const PageEditor = () => {
           setTitle(page.title || '');
           setSlug(page.slug || '');
           setStatus(page.status || 'draft');
-          setFeaturedImage(page.featuredImage || null);
+          // Support both new featuredImagePath string and legacy featuredImage object
+          setFeaturedImagePath(
+            page.featuredImagePath ||
+            page.featuredImage?.storagePath ||
+            page.featuredImage?.path ||
+            ''
+          );
           setBlocks(page.blocks || []);
         } else {
           setError('Page not found');
@@ -98,7 +104,7 @@ export const PageEditor = () => {
       title,
       slug,
       status,
-      featuredImage,
+      featuredImagePath: featuredImagePath || null,
       blocks
     };
 
@@ -188,10 +194,15 @@ export const PageEditor = () => {
 
           <div className="admin-editor-upload admin-editor-field-full">
             <strong>Cover Image</strong>
-            {featuredImage && (
+            {featuredImagePath && (
               <div className="admin-editor-current-image">
-                <p>{featuredImage.alt || featuredImage.storagePath}</p>
-                <button onClick={() => setFeaturedImage(null)} className="admin-editor-remove" type="button">Remove</button>
+                <img
+                  src={featuredImagePath}
+                  alt="Cover"
+                  style={{ maxWidth: '100%', maxHeight: '120px', objectFit: 'cover', borderRadius: '4px', marginBottom: '6px' }}
+                />
+                <p style={{ fontSize: '12px', wordBreak: 'break-all' }}>{featuredImagePath}</p>
+                <button onClick={() => setFeaturedImagePath('')} className="admin-editor-remove" type="button">Remove</button>
               </div>
             )}
             <div className="admin-editor-upload-input-wrap">

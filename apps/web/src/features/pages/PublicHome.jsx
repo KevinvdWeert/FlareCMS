@@ -74,10 +74,15 @@ export const PublicHome = () => {
                 <span className="pub-hero-cta">Read article →</span>
               </div>
               <div className="pub-hero-image-wrap">
-                {frontPage.featuredImage ? (
+                {(frontPage.featuredImagePath || frontPage.featuredImage) ? (
                   <HeroImage
-                    storagePath={frontPage.featuredImage.storagePath}
-                    alt={frontPage.featuredImage.alt}
+                    imagePath={
+                      frontPage.featuredImagePath ||
+                      frontPage.featuredImage?.storagePath ||
+                      frontPage.featuredImage?.path ||
+                      null
+                    }
+                    alt={frontPage.title}
                   />
                 ) : (
                   <div className="placeholder-image" style={{ height: '100%' }}>
@@ -118,10 +123,15 @@ export const PublicHome = () => {
               {pages.map((page) => (
                 <Link to={`/${page.slug}`} key={page.id} className="page-card">
                   <div className="card-image">
-                    {page.featuredImage ? (
+                    {(page.featuredImagePath || page.featuredImage) ? (
                       <CardImage
-                        storagePath={page.featuredImage.storagePath}
-                        alt={page.featuredImage.alt}
+                        imagePath={
+                          page.featuredImagePath ||
+                          page.featuredImage?.storagePath ||
+                          page.featuredImage?.path ||
+                          null
+                        }
+                        alt={page.title}
                       />
                     ) : (
                       <div className="placeholder-image" style={{ height: '100%' }}>
@@ -155,8 +165,8 @@ export const PublicHome = () => {
 };
 
 /** Hero image for the featured front-page card */
-const HeroImage = ({ storagePath, alt }) => {
-  const { url, error } = useImageUrl(storagePath);
+const HeroImage = ({ imagePath, alt }) => {
+  const { url, error } = useImageUrl(imagePath);
   if (error) {
     return (
       <div className="placeholder-image" style={{ height: '100%' }}>
@@ -169,8 +179,8 @@ const HeroImage = ({ storagePath, alt }) => {
 };
 
 /** Card thumbnail image */
-const CardImage = ({ storagePath, alt }) => {
-  const { url, error } = useImageUrl(storagePath);
+const CardImage = ({ imagePath, alt }) => {
+  const { url, error } = useImageUrl(imagePath);
   if (error) {
     return (
       <div className="placeholder-image" style={{ height: '100%' }}>

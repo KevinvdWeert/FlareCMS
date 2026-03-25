@@ -8,26 +8,25 @@ import { writeActivityLog, requireStaff } from "./lib/db";
 const db = admin.firestore();
 
 /**
- * Callable: Register media asset metadata in Firestore after a client-side upload.
- * The client uploads directly to Firebase Storage, then calls this function to
- * persist metadata.
+ * Callable: Register image metadata in Firestore after a client-side upload
+ * to the local upload server.  The `path` field must be a relative web path
+ * such as `/images/hero-123.jpg`.
  */
 export const registerMediaAsset = functions.https.onCall(async (data, context) => {
   const log = createLogger();
   await requireStaff(context);
   const uid = context.auth!.uid;
 
-  const { storagePath, fileName, mimeType, sizeBytes, dimensions, tags = [] } = (data as {
-    storagePath?: string;
+  const { path, fileName, mimeType, sizeBytes, tags = [] } = (data as {
+    path?: string;
     fileName?: string;
     mimeType?: string;
     sizeBytes?: number;
-    dimensions?: { width: number; height: number };
     tags?: string[];
   }) || {};
 
-  if (!storagePath || typeof storagePath !== "string") {
-    throw new functions.https.HttpsError("invalid-argument", "storagePath is required.");
+  if (!path || typeof path !== "string") {
+    throw new functions.https.HttpsError("invalid-argument", "path is required.");
   }
   if (!fileName || typeof fileName !== "string") {
     throw new functions.https.HttpsError("invalid-argument", "fileName is required.");
@@ -45,13 +44,12 @@ export const registerMediaAsset = functions.https.onCall(async (data, context) =
     );
   }
 
-  const assetRef = db.collection("mediaAssets").doc();
-  await assetRef.set({
-    storagePath,
+  const imageRef = db.collection("images").doc();
+  await imageRef.set({
+    path,
     fileName,
     mimeType,
     sizeBytes: sizeBytes || null,
-    dimensions: dimensions || null,
     tags: Array.isArray(tags) ? tags : [],
     ownerId: uid,
     usedInPages: [],
@@ -63,17 +61,17 @@ export const registerMediaAsset = functions.https.onCall(async (data, context) =
     actorId: uid,
     actorEmail: context.auth!.token?.email || null,
     action: "media_uploaded",
-    resourceType: "mediaAsset",
-    resourceId: assetRef.id,
+    resourceType: "image",
+    resourceId: imageRef.id,
     meta: { fileName, mimeType, sizeBytes },
   });
 
-  log.info("Media asset registered", { assetId: assetRef.id, uid });
-  return { success: true, id: assetRef.id };
+  log.info("Image registered", { imageId: imageRef.id, uid });
+  return { success: true, id: imageRef.id };
 });
 
 /**
- * Callable: List media assets with pagination and optional filtering.
+ * Callable: List images with pagination and optional filtering.
  * Requires staff.
  */
 export const listMediaAssets = functions.https.onCall(async (data, context) => {
@@ -89,11 +87,9 @@ export const listMediaAssets = functions.https.onCall(async (data, context) => {
 
   log.info("listMediaAssets called", { callerUid: context.auth!.uid });
 
-  // Fetch one extra document to determine whether a next page exists.
   const safeLimit = Math.min(pageSize, 100);
 
-  // Build base query with all applicable filters combined.
-  let baseQuery: admin.firestore.Query = db.collection("mediaAssets");
+  let baseQuery: admin.firestore.Query = db.collection("images");
   if (ownerOnly) {
     baseQuery = baseQuery.where("ownerId", "==", context.auth!.uid);
   }
@@ -105,7 +101,7 @@ export const listMediaAssets = functions.https.onCall(async (data, context) => {
     .limit(safeLimit + 1);
 
   if (startAfterId) {
-    const startDoc = await db.collection("mediaAssets").doc(startAfterId).get();
+    const startDoc = await db.collection("images").doc(startAfterId).get();
     if (startDoc.exists) {
       q = q.startAfter(startDoc);
     }
@@ -120,8 +116,10 @@ export const listMediaAssets = functions.https.onCall(async (data, context) => {
 });
 
 /**
- * Callable: Delete a media asset (metadata + storage object).
- * Owner or admin can delete. Prevents deletion if asset is in use.
+ * Callable: Delete an image record from Firestore.
+ * Note: the physical file in the local `images/` folder is NOT deleted by
+ * this function (the upload server does not expose a delete endpoint).
+ * Owner or admin can delete. Prevents deletion if image is in use.
  */
 export const deleteMediaAsset = functions.https.onCall(async (data, context) => {
   const log = createLogger();
@@ -130,57 +128,46 @@ export const deleteMediaAsset = functions.https.onCall(async (data, context) => 
 
   const { id } = (data as { id?: string }) || {};
   if (!id || typeof id !== "string") {
-    throw new functions.https.HttpsError("invalid-argument", "Asset id is required.");
+    throw new functions.https.HttpsError("invalid-argument", "Image id is required.");
   }
 
-  const assetRef = db.collection("mediaAssets").doc(id);
-  const assetSnap = await assetRef.get();
+  const imageRef = db.collection("images").doc(id);
+  const imageSnap = await imageRef.get();
 
-  if (!assetSnap.exists) {
+  if (!imageSnap.exists) {
     throw new functions.https.HttpsError("not-found", ErrorMessages.NOT_FOUND);
   }
 
-  const asset = assetSnap.data()!;
+  const image = imageSnap.data()!;
 
-  // Only owner or admin can delete
-  if (callerData.role === "editor" && asset.ownerId !== uid) {
+  if (callerData.role === "editor" && image.ownerId !== uid) {
     throw new functions.https.HttpsError("permission-denied", ErrorMessages.FORBIDDEN);
   }
 
-  // Prevent deletion if asset is attached to pages
-  if (Array.isArray(asset.usedInPages) && asset.usedInPages.length > 0) {
+  if (Array.isArray(image.usedInPages) && image.usedInPages.length > 0) {
     throw new functions.https.HttpsError(
       "failed-precondition",
-      `Asset is used in ${asset.usedInPages.length} page(s). Detach it first.`
+      `Image is used in ${image.usedInPages.length} page(s). Detach it first.`
     );
   }
 
-  // Delete from Storage
-  try {
-    const bucket = admin.storage().bucket();
-    await bucket.file(asset.storagePath).delete();
-  } catch (err) {
-    // Log but don't block metadata cleanup if the file is already gone
-    log.warn("Storage delete failed (file may not exist)", { assetId: id, error: String(err) });
-  }
-
-  await assetRef.delete();
+  await imageRef.delete();
 
   await writeActivityLog({
     actorId: uid,
     actorEmail: context.auth!.token?.email || null,
     action: "media_deleted",
-    resourceType: "mediaAsset",
+    resourceType: "image",
     resourceId: id,
-    meta: { fileName: asset.fileName },
+    meta: { fileName: image.fileName },
   });
 
-  log.info("Media asset deleted", { assetId: id, uid });
+  log.info("Image deleted", { imageId: id, uid });
   return { success: true };
 });
 
 /**
- * Callable: Attach a media asset to a page.
+ * Callable: Attach an image to a page.
  */
 export const attachAssetToPage = functions.https.onCall(async (data, context) => {
   await requireStaff(context);
@@ -190,13 +177,13 @@ export const attachAssetToPage = functions.https.onCall(async (data, context) =>
     throw new functions.https.HttpsError("invalid-argument", "assetId and pageId are required.");
   }
 
-  const assetRef = db.collection("mediaAssets").doc(assetId);
-  const assetSnap = await assetRef.get();
-  if (!assetSnap.exists) {
-    throw new functions.https.HttpsError("not-found", "Asset not found.");
+  const imageRef = db.collection("images").doc(assetId);
+  const imageSnap = await imageRef.get();
+  if (!imageSnap.exists) {
+    throw new functions.https.HttpsError("not-found", "Image not found.");
   }
 
-  await assetRef.update({
+  await imageRef.update({
     usedInPages: admin.firestore.FieldValue.arrayUnion(pageId),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
@@ -205,7 +192,7 @@ export const attachAssetToPage = functions.https.onCall(async (data, context) =>
 });
 
 /**
- * Callable: Detach a media asset from a page.
+ * Callable: Detach an image from a page.
  */
 export const detachAssetFromPage = functions.https.onCall(async (data, context) => {
   await requireStaff(context);
@@ -215,13 +202,13 @@ export const detachAssetFromPage = functions.https.onCall(async (data, context) 
     throw new functions.https.HttpsError("invalid-argument", "assetId and pageId are required.");
   }
 
-  const assetRef = db.collection("mediaAssets").doc(assetId);
-  const assetSnap = await assetRef.get();
-  if (!assetSnap.exists) {
-    throw new functions.https.HttpsError("not-found", "Asset not found.");
+  const imageRef = db.collection("images").doc(assetId);
+  const imageSnap = await imageRef.get();
+  if (!imageSnap.exists) {
+    throw new functions.https.HttpsError("not-found", "Image not found.");
   }
 
-  await assetRef.update({
+  await imageRef.update({
     usedInPages: admin.firestore.FieldValue.arrayRemove(pageId),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });

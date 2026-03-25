@@ -43,7 +43,7 @@ export const getDashboardStats = functions.https.onCall(async (_data, context) =
     db.collection("users").count().get(),
     db.collection("pages").where("status", "==", "published").count().get(),
     db.collection("pages").where("status", "==", "draft").count().get(),
-    db.collection("mediaAssets").count().get(),
+    db.collection("images").count().get(),
   ]);
 
   const stats = {
