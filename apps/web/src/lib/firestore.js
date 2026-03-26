@@ -124,14 +124,16 @@ export const createPage = async (pageData, uid) => {
   const pagesRef = collection(db, 'pages');
   const newDocRef = doc(pagesRef);
   const data = {
+    // Safe defaults — overridden by caller-supplied pageData
+    blocks: [],
+    status: 'draft',
+    featuredImage: null,
     ...pageData,
+    // Server-controlled fields always win
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     createdBy: uid,
     updatedBy: uid,
-    blocks: [],
-    status: 'draft',
-    featuredImage: null
   };
   await setDoc(newDocRef, data);
   return newDocRef.id;
