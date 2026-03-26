@@ -588,3 +588,40 @@ export const callGetRecentActivity = (opts = {}) =>
  */
 export const callGetTrafficSummary = () =>
   httpsCallable(functions, 'getTrafficSummary')();
+
+// -----------------------------------------------------------------------
+// Settings Management
+// -----------------------------------------------------------------------
+
+/**
+ * Saves global site settings. Admin only.
+ * @param {string} settingType
+ * @param {object} settings
+ * @param {boolean} publishNow
+ */
+export const callSaveGlobalSettings = (settingType, settings, publishNow = true) =>
+  httpsCallable(functions, 'saveGlobalSettings')({ settingType, settings, publishNow });
+
+/**
+ * Restores a specific settings version. Admin only.
+ * @param {string} settingType
+ * @param {string} versionId
+ */
+export const callRestoreSettingsVersion = (settingType, versionId) =>
+  httpsCallable(functions, 'restoreSettingsVersion')({ settingType, versionId });
+
+/**
+ * Returns version history for a settings type. Staff only.
+ * @param {string} settingType
+ * @param {number} limit
+ */
+export const callGetSettingsHistory = (settingType, limit = 10) =>
+  httpsCallable(functions, 'getSettingsHistory')({ settingType, limit });
+
+/**
+ * Publishes staging settings by token. Admin only.
+ * @param {string} settingType
+ * @param {string} stagingToken
+ */
+export const callPublishStagingSettings = (settingType, stagingToken) =>
+  httpsCallable(functions, 'publishStagingSettings')({ settingType, stagingToken });

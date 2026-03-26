@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getPages, getGeneralSettings, getHomepagePage } from '../../lib/firestore';
+import { getPages, getGeneralSettings, getHomepagePage, getSettings } from '../../lib/firestore';
 import { Link } from 'react-router-dom';
 import { useImageUrl } from '../../hooks/useImageUrl';
 import { BlockRenderer } from '../blocks/BlockRenderer';
@@ -8,6 +8,8 @@ import { applySeo, fallbackDescriptionFromBlocks } from '../../lib/seo';
 export const PublicHome = () => {
   const [pages, setPages] = useState([]);
   const [frontPage, setFrontPage] = useState(null);
+  const [footerSettings, setFooterSettings] = useState(null);
+  const [headerSettings, setHeaderSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
@@ -28,11 +30,13 @@ export const PublicHome = () => {
       setLoading(true);
       setLoadError('');
       try {
-        const [data, homepage, settings] = await Promise.race([
+        const [data, homepage, settings, footerData, headerData] = await Promise.race([
           Promise.all([
             getPages(true),
             getHomepagePage(),
             getGeneralSettings(),
+            getSettings('footer'),
+            getSettings('header'),
           ]),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Request timed out while loading pages.')), 5000)
@@ -51,6 +55,8 @@ export const PublicHome = () => {
 
         setFrontPage(fp);
         setPages(fp ? allPages.filter((p) => p.id !== fp.id) : allPages);
+        setFooterSettings(footerData);
+        setHeaderSettings(headerData);
       } catch (error) {
         console.error('Failed to load published pages:', error);
         setPages([]);
@@ -183,7 +189,15 @@ export const PublicHome = () => {
       </main>
 
       <footer className="site-footer">
-        <p>&copy; {new Date().getFullYear()} FlareCMS. Built with passion.</p>
+        {footerSettings?.footerText && <p className="footer-tagline">{footerSettings.footerText}</p>}
+        <p>{footerSettings?.copyrightLine || `© ${new Date().getFullYear()} FlareCMS. Built with passion.`}</p>
+        {footerSettings?.legalLinks?.length > 0 && (
+          <nav className="footer-legal-links">
+            {footerSettings.legalLinks.map((link, i) => (
+              <a key={link.url || i} href={link.url}>{link.label}</a>
+            ))}
+          </nav>
+        )}
       </footer>
     </div>
   );

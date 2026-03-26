@@ -25,6 +25,36 @@ const PageEditor = lazy(() =>
 const UserList = lazy(() =>
   import('../features/users/UserList').then((module) => ({ default: module.UserList }))
 );
+const SettingsLayout = lazy(() =>
+  import('../features/settings/SettingsLayout').then((module) => ({ default: module.SettingsLayout }))
+);
+const FooterEditor = lazy(() =>
+  import('../features/settings/FooterEditor').then((module) => ({ default: module.FooterEditor }))
+);
+const HeaderEditor = lazy(() =>
+  import('../features/settings/HeaderEditor').then((module) => ({ default: module.HeaderEditor }))
+);
+const HomepageBuilder = lazy(() =>
+  import('../features/settings/HomepageBuilder').then((module) => ({ default: module.HomepageBuilder }))
+);
+const SiteIdentityEditor = lazy(() =>
+  import('../features/settings/SiteIdentityEditor').then((module) => ({ default: module.SiteIdentityEditor }))
+);
+const SeoEditor = lazy(() =>
+  import('../features/settings/SeoEditor').then((module) => ({ default: module.SeoEditor }))
+);
+const SnippetsEditor = lazy(() =>
+  import('../features/settings/SnippetsEditor').then((module) => ({ default: module.SnippetsEditor }))
+);
+const ContactEditor = lazy(() =>
+  import('../features/settings/ContactEditor').then((module) => ({ default: module.ContactEditor }))
+);
+const MediaCreditEditor = lazy(() =>
+  import('../features/settings/MediaCreditEditor').then((module) => ({ default: module.MediaCreditEditor }))
+);
+const LinkChecker = lazy(() =>
+  import('../features/settings/LinkChecker').then((module) => ({ default: module.LinkChecker }))
+);
 
 import { PublicHome } from '../features/pages/PublicHome';
 import { PublicPage } from '../features/pages/PublicPage';
@@ -102,6 +132,26 @@ function App() {
                       </Suspense>
                     }
                   />
+                </Route>
+
+                {/* Settings Routes */}
+                <Route
+                  element={
+                    <Suspense fallback={<LoadingSpinner label="Loading settings..." />}>
+                      <SettingsLayout />
+                    </Suspense>
+                  }
+                >
+                  <Route path="/admin/settings" element={<Navigate to="/admin/settings/footer" replace />} />
+                  <Route path="/admin/settings/footer" element={<Suspense fallback={<LoadingSpinner label="Loading..." />}><FooterEditor /></Suspense>} />
+                  <Route path="/admin/settings/header" element={<Suspense fallback={<LoadingSpinner label="Loading..." />}><HeaderEditor /></Suspense>} />
+                  <Route path="/admin/settings/homepage" element={<Suspense fallback={<LoadingSpinner label="Loading..." />}><HomepageBuilder /></Suspense>} />
+                  <Route path="/admin/settings/identity" element={<Suspense fallback={<LoadingSpinner label="Loading..." />}><SiteIdentityEditor /></Suspense>} />
+                  <Route path="/admin/settings/seo" element={<Suspense fallback={<LoadingSpinner label="Loading..." />}><SeoEditor /></Suspense>} />
+                  <Route path="/admin/settings/snippets" element={<Suspense fallback={<LoadingSpinner label="Loading..." />}><SnippetsEditor /></Suspense>} />
+                  <Route path="/admin/settings/contact" element={<Suspense fallback={<LoadingSpinner label="Loading..." />}><ContactEditor /></Suspense>} />
+                  <Route path="/admin/settings/media-credits" element={<Suspense fallback={<LoadingSpinner label="Loading..." />}><MediaCreditEditor /></Suspense>} />
+                  <Route path="/admin/settings/link-checker" element={<Suspense fallback={<LoadingSpinner label="Loading..." />}><LinkChecker /></Suspense>} />
                 </Route>
               </Route>
             </Route>

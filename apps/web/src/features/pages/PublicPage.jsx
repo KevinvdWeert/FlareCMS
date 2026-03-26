@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getPageBySlug } from '../../lib/firestore';
+import { getPageBySlug, getSettings } from '../../lib/firestore';
 import { BlockRenderer } from '../blocks/BlockRenderer';
 import { useImageUrl } from '../../hooks/useImageUrl';
 import { applySeo, fallbackDescriptionFromBlocks } from '../../lib/seo';
@@ -8,6 +8,8 @@ import { applySeo, fallbackDescriptionFromBlocks } from '../../lib/seo';
 export const PublicPage = () => {
   const { slug } = useParams();
   const [page, setPage] = useState(null);
+  const [footerSettings, setFooterSettings] = useState(null);
+  const [headerSettings, setHeaderSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
@@ -16,13 +18,19 @@ export const PublicPage = () => {
       setLoading(true);
       setLoadError('');
       try {
-        const data = await Promise.race([
-          getPageBySlug(slug),
+        const [data, footerData, headerData] = await Promise.race([
+          Promise.all([
+            getPageBySlug(slug),
+            getSettings('footer'),
+            getSettings('header'),
+          ]),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Request timed out while loading page.')), 5000)
           )
         ]);
         setPage(data);
+        setFooterSettings(footerData);
+        setHeaderSettings(headerData);
       } catch (error) {
         console.error('Failed to load page:', error);
         setPage(null);
@@ -81,7 +89,7 @@ export const PublicPage = () => {
       <div className="site-layout">
         <header className="site-header">
           <div className="header-content narrow-header">
-            <Link to="/" className="site-logo">FlareCMS</Link>
+            <Link to="/" className="site-logo">{headerSettings?.logoText || 'FlareCMS'}</Link>
           </div>
         </header>
         <main className="not-found">
@@ -90,7 +98,15 @@ export const PublicPage = () => {
           <Link to="/" className="btn-primary">← Go Home</Link>
         </main>
         <footer className="site-footer">
-          <p>&copy; {new Date().getFullYear()} FlareCMS.</p>
+          {footerSettings?.footerText && <p className="footer-tagline">{footerSettings.footerText}</p>}
+          <p>{footerSettings?.copyrightLine || `© ${new Date().getFullYear()} FlareCMS.`}</p>
+          {footerSettings?.legalLinks?.length > 0 && (
+            <nav className="footer-legal-links">
+              {footerSettings.legalLinks.map((link, i) => (
+                <a key={link.url || i} href={link.url}>{link.label}</a>
+              ))}
+            </nav>
+          )}
         </footer>
       </div>
     );
@@ -104,7 +120,12 @@ export const PublicPage = () => {
     <div className="site-layout">
       <header className="site-header">
         <div className="header-content narrow-header">
-          <Link to="/" className="site-logo">FlareCMS</Link>
+          <Link to="/" className="site-logo">{headerSettings?.logoText || 'FlareCMS'}</Link>
+          {headerSettings?.navItems?.filter((n) => n.visible !== false).map((item, i) =>
+            item.isExternal
+              ? <a key={item.href || i} href={item.href} target="_blank" rel="noopener noreferrer" className="pub-nav-link">{item.label}</a>
+              : <Link key={item.href || i} to={item.href} className="pub-nav-link">{item.label}</Link>
+          )}
         </div>
       </header>
 
@@ -129,7 +150,15 @@ export const PublicPage = () => {
       </article>
 
       <footer className="site-footer">
-        <p>&copy; {new Date().getFullYear()} FlareCMS.</p>
+        {footerSettings?.footerText && <p className="footer-tagline">{footerSettings.footerText}</p>}
+        <p>{footerSettings?.copyrightLine || `© ${new Date().getFullYear()} FlareCMS.`}</p>
+        {footerSettings?.legalLinks?.length > 0 && (
+          <nav className="footer-legal-links">
+            {footerSettings.legalLinks.map((link, i) => (
+              <a key={link.url || i} href={link.url}>{link.label}</a>
+            ))}
+          </nav>
+        )}
       </footer>
     </div>
   );

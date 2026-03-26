@@ -242,6 +242,17 @@ export const getHomepagePage = async () => {
 };
 
 /**
+ * Fetches settings for a given settingType from `settings/{settingType}`.
+ * @param {string} settingType
+ * @returns {Promise<object|null>}
+ */
+export const getSettings = async (settingType) => {
+  const ref = doc(db, 'settings', settingType);
+  const snap = await getDoc(ref);
+  return snap.exists() ? snap.data() : null;
+};
+
+/**
  * Converts a Firestore Timestamp value to a JavaScript Date.
  *
  * Cloud Functions callables serialize Firestore Timestamps as plain objects
