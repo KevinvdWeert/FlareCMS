@@ -17,6 +17,14 @@
       ]
     },
     {
+      "collectionGroup": "pages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isHomepage", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "mediaAssets",
       "queryScope": "COLLECTION",
       "fields": [

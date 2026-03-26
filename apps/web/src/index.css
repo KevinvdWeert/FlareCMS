@@ -1569,6 +1569,92 @@ body {
 }
 
 /* =========================================
+   QUILL EDITOR — paragraph blocks
+   Overrides the default Quill Snow theme to
+   match the Flare admin aesthetic.
+========================================= */
+
+.quill-editor-wrap {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+/* Toolbar strip */
+.quill-editor-wrap .ql-toolbar.ql-snow {
+  border: none;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 6px 8px;
+  font-family: inherit;
+}
+
+.quill-editor-wrap .ql-toolbar.ql-snow .ql-formats {
+  margin-right: 8px;
+}
+
+.quill-editor-wrap .ql-toolbar.ql-snow button {
+  height: 26px;
+  width: 26px;
+  padding: 3px;
+  border-radius: 5px;
+  color: #475569;
+  transition: background 0.15s;
+}
+
+.quill-editor-wrap .ql-toolbar.ql-snow button:hover,
+.quill-editor-wrap .ql-toolbar.ql-snow button.ql-active {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.quill-editor-wrap .ql-toolbar.ql-snow button:hover .ql-stroke,
+.quill-editor-wrap .ql-toolbar.ql-snow button.ql-active .ql-stroke {
+  stroke: #0f172a;
+}
+
+.quill-editor-wrap .ql-toolbar.ql-snow button:hover .ql-fill,
+.quill-editor-wrap .ql-toolbar.ql-snow button.ql-active .ql-fill {
+  fill: #0f172a;
+}
+
+/* Editor content area */
+.quill-editor-wrap .ql-container.ql-snow {
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.quill-editor-wrap .ql-editor {
+  min-height: 80px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.6;
+  color: #0f172a;
+  word-break: break-word;
+}
+
+.quill-editor-wrap .ql-editor.ql-blank::before {
+  font-style: normal;
+  color: #94a3b8;
+  left: 12px;
+}
+
+.quill-editor-wrap .ql-editor p,
+.quill-editor-wrap .ql-editor ul,
+.quill-editor-wrap .ql-editor ol {
+  margin-bottom: 0.4em;
+}
+
+.quill-editor-wrap .ql-editor a {
+  color: #0284c7;
+  text-decoration: underline;
+}
+
+/* =========================================
    IMAGE BLOCK — upload / library actions
 ========================================= */
 
@@ -3414,6 +3500,27 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+/* Homepage row in sidebar */
+.admin-editor-homepage-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.admin-homepage-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  justify-content: center;
+}
+
+.admin-homepage-btn.is-active {
+  border-color: var(--accent-primary, #38bdf8);
+  color: var(--accent-primary, #38bdf8);
 }
 
 /* Slug prefix row */
