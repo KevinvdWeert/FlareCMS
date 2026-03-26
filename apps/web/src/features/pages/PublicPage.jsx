@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { getPageBySlug } from '../../lib/firestore';
 import { BlockRenderer } from '../blocks/BlockRenderer';
 import { useImageUrl } from '../../hooks/useImageUrl';
+import { applySeo, fallbackDescriptionFromBlocks } from '../../lib/seo';
 
 export const PublicPage = () => {
   const { slug } = useParams();
@@ -39,6 +40,33 @@ export const PublicPage = () => {
     page?.featuredImage?.path ||
     null;
   const { url: heroUrl } = useImageUrl(heroImagePath);
+  const heroAlt =
+    page?.featuredImage?.alt ||
+    page?.featuredImageAlt ||
+    page?.title ||
+    'Featured image';
+
+  useEffect(() => {
+    if (loading) return;
+
+    if (!page) {
+      applySeo({
+        title: 'Page Not Found | FlareCMS',
+        description: 'The requested page could not be found.',
+        type: 'website',
+      });
+      return;
+    }
+
+    const metaTitle = page?.seoMetadata?.metaTitle?.trim();
+    const metaDescription = page?.seoMetadata?.metaDescription?.trim();
+
+    applySeo({
+      title: metaTitle || `${page.title} | FlareCMS`,
+      description: metaDescription || fallbackDescriptionFromBlocks(page.blocks),
+      type: 'article',
+    });
+  }, [loading, page]);
 
   if (loading) {
     return (
@@ -83,7 +111,7 @@ export const PublicPage = () => {
       <article className="public-article">
         {heroUrl && (
           <div className="pub-article-hero">
-            <img src={heroUrl} alt={page.title || 'Featured Image'} />
+            <img src={heroUrl} alt={heroAlt} />
           </div>
         )}
 

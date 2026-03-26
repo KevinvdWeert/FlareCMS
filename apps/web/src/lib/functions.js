@@ -18,6 +18,8 @@ import {
   orderBy,
   limit,
   startAfter,
+  writeBatch,
+  setDoc,
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -89,6 +91,148 @@ const directGetRecentActivity = async ({ limit: limitCount = 10 } = {}) => {
   }
 };
 
+const getTimestampMs = (value) => {
+  if (!value) return 0;
+  if (typeof value?.toDate === 'function') return value.toDate().getTime();
+  if (typeof value?.seconds === 'number') return value.seconds * 1000;
+  if (typeof value?._seconds === 'number') return value._seconds * 1000;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+};
+
+const getUserDisplayName = (userData = {}) => {
+  const fullName = String(userData.fullName || '').trim();
+  if (fullName) return fullName;
+
+  const displayName = String(userData.displayName || '').trim();
+  if (displayName) return displayName;
+
+  const firstName = String(userData.firstName || '').trim();
+  const lastName = String(userData.lastName || '').trim();
+  const combined = `${firstName} ${lastName}`.trim();
+  if (combined) return combined;
+
+  const email = String(userData.email || '').trim();
+  if (email) return email;
+
+  return '';
+};
+
+const enrichActivityActors = async (entries = []) => {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return entries;
+  }
+
+  let usersSnap;
+  try {
+    usersSnap = await getDocs(collection(db, 'users'));
+  } catch (err) {
+    const code = String(err?.code || '');
+    if (code.includes('permission-denied') || code.includes('failed-precondition')) {
+      return entries;
+    }
+    throw err;
+  }
+
+  const byId = new Map();
+  const byEmail = new Map();
+  usersSnap.docs.forEach((d) => {
+    const data = d.data() || {};
+    byId.set(d.id, data);
+    const email = String(data.email || '').trim().toLowerCase();
+    if (email) {
+      byEmail.set(email, data);
+    }
+  });
+
+  return entries.map((entry) => {
+    const actorId = String(entry?.actorId || entry?.actorUid || '').trim();
+    const actorEmail = String(entry?.actorEmail || '').trim();
+    const actorEmailLower = actorEmail.toLowerCase();
+    const actorUidFromEmail = !actorEmail.includes('@') ? actorEmail : '';
+
+    const userData =
+      byId.get(actorId) ||
+      byId.get(actorUidFromEmail) ||
+      byEmail.get(actorEmailLower) ||
+      null;
+
+    if (!userData) {
+      return entry;
+    }
+
+    const actorName = getUserDisplayName(userData);
+    return {
+      ...entry,
+      actorName: actorName || entry.actorName || '',
+      actorEmail: String(userData.email || actorEmail || '').trim(),
+      actorId: actorId || actorUidFromEmail || entry.actorId || '',
+    };
+  });
+};
+
+const directGetSyntheticRecentActivity = async ({ limit: limitCount = 10 } = {}) => {
+  const safeDocs = async (q) => {
+    try {
+      return (await getDocs(q)).docs;
+    } catch (err) {
+      const code = String(err?.code || '');
+      if (code.includes('permission-denied') || code.includes('failed-precondition')) {
+        return [];
+      }
+      throw err;
+    }
+  };
+
+  const [pageDocs, mediaDocs, userDocs] = await Promise.all([
+    safeDocs(query(collection(db, 'pages'), orderBy('updatedAt', 'desc'), limit(Math.max(limitCount, 8)))),
+    safeDocs(query(collection(db, 'mediaAssets'), orderBy('createdAt', 'desc'), limit(Math.max(limitCount, 8)))),
+    safeDocs(query(collection(db, 'users'), orderBy('updatedAt', 'desc'), limit(Math.max(limitCount, 8)))),
+  ]);
+
+  const pageEntries = pageDocs.map((d) => {
+    const data = d.data() || {};
+    return {
+      id: `page-${d.id}`,
+      action: data.status === 'published' ? 'page_published' : 'page_updated',
+      actorEmail: data.updatedByEmail || data.createdByEmail || data.updatedBy || data.createdBy || 'System',
+      resourceType: 'page',
+      createdAt: data.updatedAt || data.createdAt || null,
+      meta: { title: data.title || data.slug || d.id },
+    };
+  });
+
+  const mediaEntries = mediaDocs.map((d) => {
+    const data = d.data() || {};
+    return {
+      id: `media-${d.id}`,
+      action: 'media_uploaded',
+      actorEmail: data.ownerEmail || data.ownerId || 'System',
+      resourceType: 'media',
+      createdAt: data.createdAt || data.updatedAt || null,
+      meta: { title: data.fileName || d.id },
+    };
+  });
+
+  const userEntries = userDocs.map((d) => {
+    const data = d.data() || {};
+    return {
+      id: `user-${d.id}`,
+      action: 'user_profile',
+      actorEmail: data.email || d.id,
+      resourceType: 'user',
+      createdAt: data.updatedAt || data.createdAt || null,
+      meta: { title: data.role || 'user' },
+    };
+  });
+
+  const combined = [...pageEntries, ...mediaEntries, ...userEntries]
+    .sort((a, b) => getTimestampMs(b.createdAt) - getTimestampMs(a.createdAt))
+    .slice(0, limitCount);
+
+  return { entries: combined };
+};
+
 const directListMediaAssets = async ({ pageSize = 20, startAfterId = null, mimeTypeFilter, ownerOnly = false } = {}) => {
   try {
     let q;
@@ -154,6 +298,49 @@ const directRegisterMediaAsset = async (metadata) => {
 
   const ref = await addDoc(collection(db, 'mediaAssets'), payload);
   return { success: true, id: ref.id };
+};
+
+const directSetFrontPage = async (pageId) => {
+  const user = auth.currentUser;
+  if (!user?.uid) {
+    const err = new Error('Not authenticated');
+    err.code = 'auth/unauthenticated';
+    throw err;
+  }
+
+  const pagesRef = collection(db, 'pages');
+  const currentHomeSnap = await getDocs(query(pagesRef, where('isHomepage', '==', true)));
+
+  const batch = writeBatch(db);
+  currentHomeSnap.docs.forEach((d) => {
+    batch.update(d.ref, {
+      isHomepage: false,
+      updatedAt: serverTimestamp(),
+    });
+  });
+
+  if (pageId) {
+    const targetRef = doc(db, 'pages', pageId);
+    const targetSnap = await getDoc(targetRef);
+    if (!targetSnap.exists()) {
+      const err = new Error('Page not found.');
+      err.code = 'not-found';
+      throw err;
+    }
+
+    batch.update(targetRef, {
+      isHomepage: true,
+      updatedAt: serverTimestamp(),
+    });
+  }
+
+  batch.set(doc(db, 'settings', 'general'), {
+    frontPageId: pageId || null,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+
+  await batch.commit();
+  return { success: true, pageId: pageId || null };
 };
 
 // Connect to emulator in development
@@ -251,7 +438,16 @@ export const callUnpublishPage = (id) =>
  * @param {string|null} pageId - The page ID to set as front page, or null to clear.
  */
 export const callSetFrontPage = (pageId) =>
-  httpsCallable(functions, 'setFrontPage')({ pageId });
+  (SHOULD_BYPASS_CALLABLES_LOCALLY
+    ? directSetFrontPage(pageId).then((data) => ({ data }))
+    : httpsCallable(functions, 'setFrontPage')({ pageId })
+  ).catch(async (err) => {
+    if (!shouldFallbackToFirestore(err)) {
+      throw err;
+    }
+    console.warn('Falling back to Firestore for setFrontPage:', err?.message || err);
+    return { data: await directSetFrontPage(pageId) };
+  });
 
 // -----------------------------------------------------------------------
 // Media Management
@@ -348,12 +544,43 @@ export const callGetRecentActivity = (opts = {}) =>
   (SHOULD_BYPASS_CALLABLES_LOCALLY
     ? directGetRecentActivity(opts).then((data) => ({ data }))
     : httpsCallable(functions, 'getRecentActivity')(opts)
-  ).catch(async (err) => {
+  ).then(async (result) => {
+    const entries = result?.data?.entries || [];
+    if (entries.length > 0) {
+      return { data: { ...result.data, entries: await enrichActivityActors(entries) } };
+    }
+
+    const synthetic = await directGetSyntheticRecentActivity(opts);
+    if (synthetic.entries.length === 0) {
+      return result;
+    }
+    return {
+      data: {
+        ...synthetic,
+        entries: await enrichActivityActors(synthetic.entries),
+      },
+    };
+  }).catch(async (err) => {
     if (!shouldFallbackToFirestore(err)) {
       throw err;
     }
     console.warn('Falling back to Firestore for getRecentActivity:', err?.message || err);
-    return { data: await directGetRecentActivity(opts) };
+    const primary = await directGetRecentActivity(opts);
+    if (primary.entries?.length) {
+      return {
+        data: {
+          ...primary,
+          entries: await enrichActivityActors(primary.entries),
+        },
+      };
+    }
+    const synthetic = await directGetSyntheticRecentActivity(opts);
+    return {
+      data: {
+        ...synthetic,
+        entries: await enrichActivityActors(synthetic.entries || []),
+      },
+    };
   });
 
 /**

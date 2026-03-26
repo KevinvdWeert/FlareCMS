@@ -99,7 +99,7 @@ const Block = ({ block }) => {
     const isHtml = /<(b|i|em|strong|u|a|br|ul|ol|li|span|p)[\s/>]/i.test(text);
     if (isHtml) {
       return (
-        <p
+        <div
           style={{ margin: 0, lineHeight: '1.6', color: '#334155' }}
           // eslint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{ __html: sanitizeRichText(text) }}
@@ -138,7 +138,8 @@ const Block = ({ block }) => {
     // Prefer new imagePath field; fall back to legacy storagePath for existing data
     const imageSrc = block.imagePath || block.storagePath || null;
     if (!imageSrc) return null;
-    return <RenderedImage src={imageSrc} alt={block.alt} caption={block.caption} />;
+    const imageAlt = block.alt || block.imageAlt || block.image?.alt || '';
+    return <RenderedImage src={imageSrc} alt={imageAlt} caption={block.caption} />;
   }
 
   return null;

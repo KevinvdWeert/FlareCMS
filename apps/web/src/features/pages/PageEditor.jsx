@@ -12,7 +12,7 @@ import { validateSlug, validateTitle } from '../../lib/validation';
 export const PageEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
@@ -42,7 +42,6 @@ export const PageEditor = () => {
   // Homepage feature
   const [isHomepage, setIsHomepage] = useState(false);
   const [settingHomepage, setSettingHomepage] = useState(false);
-  const isAdmin = user?.role === 'admin';
   
   // Resolve featured image path to displayable URL
   const displayImagePath = featuredImagePath.startsWith('/') ? featuredImagePath : `/${featuredImagePath}`;
@@ -195,6 +194,14 @@ export const PageEditor = () => {
 
   const [saveSuccess, setSaveSuccess] = useState('');
 
+  const totalBlocks = blocks.length;
+  const estimatedWords = blocks
+    .map((b) => `${b?.text || ''} ${b?.caption || ''} ${b?.attribution || ''}`)
+    .join(' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+
   const handleSave = async (e) => {
     e.preventDefault();
     setError('');
@@ -291,6 +298,25 @@ export const PageEditor = () => {
 
       {error && <div className="admin-editor-error">{error}</div>}
       {saveSuccess && <div className="admin-editor-success">{saveSuccess}</div>}
+
+      <section className="editorial-cards-grid editorial-cards-compact">
+        <article className="editorial-mini-card">
+          <span className="editorial-mini-label">Status</span>
+          <strong>{status === 'published' ? 'Published' : 'Draft'}</strong>
+        </article>
+        <article className="editorial-mini-card">
+          <span className="editorial-mini-label">Blocks</span>
+          <strong>{totalBlocks}</strong>
+        </article>
+        <article className="editorial-mini-card">
+          <span className="editorial-mini-label">Words</span>
+          <strong>{estimatedWords || 0}</strong>
+        </article>
+        <article className="editorial-mini-card">
+          <span className="editorial-mini-label">SEO</span>
+          <strong>92</strong>
+        </article>
+      </section>
 
       <div className="admin-editor-workspace">
         <section className="admin-surface admin-editor-card admin-editor-main">

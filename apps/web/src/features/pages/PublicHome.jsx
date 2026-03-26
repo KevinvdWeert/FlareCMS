@@ -2,12 +2,26 @@ import React, { useEffect, useState } from 'react';
 import { getPages, getGeneralSettings, getHomepagePage } from '../../lib/firestore';
 import { Link } from 'react-router-dom';
 import { useImageUrl } from '../../hooks/useImageUrl';
+import { BlockRenderer } from '../blocks/BlockRenderer';
+import { applySeo, fallbackDescriptionFromBlocks } from '../../lib/seo';
 
 export const PublicHome = () => {
   const [pages, setPages] = useState([]);
   const [frontPage, setFrontPage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+
+  const frontPageHeroPath =
+    frontPage?.featuredImagePath ||
+    frontPage?.featuredImage?.storagePath ||
+    frontPage?.featuredImage?.path ||
+    null;
+  const { url: frontPageHeroUrl } = useImageUrl(frontPageHeroPath);
+  const frontPageHeroAlt =
+    frontPage?.featuredImage?.alt ||
+    frontPage?.featuredImageAlt ||
+    frontPage?.title ||
+    'Featured image';
 
   useEffect(() => {
     const fetchPublishedPages = async () => {
@@ -49,6 +63,27 @@ export const PublicHome = () => {
     fetchPublishedPages();
   }, []);
 
+  useEffect(() => {
+    if (loading) return;
+
+    if (frontPage) {
+      const metaTitle = frontPage?.seoMetadata?.metaTitle?.trim();
+      const metaDescription = frontPage?.seoMetadata?.metaDescription?.trim();
+      applySeo({
+        title: metaTitle || `${frontPage.title} | FlareCMS`,
+        description: metaDescription || fallbackDescriptionFromBlocks(frontPage.blocks),
+        type: 'website',
+      });
+      return;
+    }
+
+    applySeo({
+      title: 'FlareCMS',
+      description: 'A lightning-fast, beautifully crafted content management system built with React and Firebase.',
+      type: 'website',
+    });
+  }, [loading, frontPage]);
+
   if (loading) {
     return (
       <div className="site-layout loading-state">
@@ -62,7 +97,6 @@ export const PublicHome = () => {
       <header className="site-header">
         <div className="header-content">
           <Link to="/" className="site-logo">FlareCMS</Link>
-          <Link to="/admin/login" className="pub-admin-link">Admin</Link>
         </div>
       </header>
 
@@ -70,32 +104,19 @@ export const PublicHome = () => {
 
         {/* ── Hero block ───────────────────────────────────────── */}
         {frontPage ? (
-          <Link to={`/${frontPage.slug}`} className="front-page-hero">
-            <div className="pub-hero-inner">
-              <div className="pub-hero-text">
-                <span className="pub-kicker">Featured</span>
-                <h1 className="pub-hero-title">{frontPage.title}</h1>
-                <span className="pub-hero-cta">Read article →</span>
+          <article className="public-article">
+            {frontPageHeroUrl && (
+              <div className="pub-article-hero">
+                <img src={frontPageHeroUrl} alt={frontPageHeroAlt} />
               </div>
-              <div className="pub-hero-image-wrap">
-                {(frontPage.featuredImagePath || frontPage.featuredImage) ? (
-                  <HeroImage
-                    imagePath={
-                      frontPage.featuredImagePath ||
-                      frontPage.featuredImage?.storagePath ||
-                      frontPage.featuredImage?.path ||
-                      null
-                    }
-                    alt={frontPage.title}
-                  />
-                ) : (
-                  <div className="placeholder-image" style={{ height: '100%' }}>
-                    <span>📰</span>
-                  </div>
-                )}
+            )}
+
+            <div className="pub-article-inner">
+              <div className="pub-article-body">
+                <BlockRenderer blocks={frontPage.blocks} />
               </div>
             </div>
-          </Link>
+          </article>
         ) : (
           <section className="pub-fallback-hero">
             <span className="pub-kicker">Welcome</span>
@@ -135,7 +156,7 @@ export const PublicHome = () => {
                           page.featuredImage?.path ||
                           null
                         }
-                        alt={page.title}
+                        alt={page.featuredImage?.alt || page.featuredImageAlt || page.title}
                       />
                     ) : (
                       <div className="placeholder-image" style={{ height: '100%' }}>
@@ -166,20 +187,6 @@ export const PublicHome = () => {
       </footer>
     </div>
   );
-};
-
-/** Hero image for the featured front-page card */
-const HeroImage = ({ imagePath, alt }) => {
-  const { url, error } = useImageUrl(imagePath);
-  if (error) {
-    return (
-      <div className="placeholder-image" style={{ height: '100%' }}>
-        <span>🖼️</span>
-      </div>
-    );
-  }
-  if (!url) return <div className="loading-image" style={{ width: '100%', height: '100%' }} />;
-  return <img src={url} alt={alt || ''} />;
 };
 
 /** Card thumbnail image */

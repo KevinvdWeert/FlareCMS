@@ -29,6 +29,12 @@ const USERS = [
     role: 'editor',
   },
   {
+    email: 'writer@flarecms.dev',
+    password: 'Writer1234!',
+    fullName: 'Writer Flare',
+    role: 'writer',
+  },
+  {
     email: 'user@flarecms.dev',
     password: 'User1234!',
     fullName: 'User Flare',

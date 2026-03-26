@@ -6,7 +6,7 @@ import { Edit, Trash, Plus, FileStack, Home } from 'lucide-react';
 import { useAuth } from '../auth/useAuth';
 
 export const PageList = () => {
-  const { user } = useAuth();
+  const { isAdmin } = useAuth();
   const [pages, setPages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -17,7 +17,9 @@ export const PageList = () => {
   const [settingFrontPage, setSettingFrontPage] = useState('');
   const PAGE_SIZE = 10;
 
-  const isAdmin = user?.role === 'admin';
+  const publishedCount = pages.filter((p) => p.status === 'published').length;
+  const draftCount = pages.filter((p) => p.status !== 'published').length;
+  const scheduledCount = pages.filter((p) => !!p.scheduledPublishAt).length;
 
   const fetchPageChunk = async ({ next = false } = {}) => {
     if (next) {
@@ -95,6 +97,25 @@ export const PageList = () => {
           <span>Create Page</span>
         </Link>
       </div>
+
+      <section className="editorial-cards-grid">
+        <article className="editorial-mini-card">
+          <span className="editorial-mini-label">Published</span>
+          <strong>{loading ? '—' : publishedCount}</strong>
+        </article>
+        <article className="editorial-mini-card">
+          <span className="editorial-mini-label">Drafts</span>
+          <strong>{loading ? '—' : draftCount}</strong>
+        </article>
+        <article className="editorial-mini-card">
+          <span className="editorial-mini-label">Homepage</span>
+          <strong>{loading ? '—' : frontPageId ? 'Set' : 'None'}</strong>
+        </article>
+        <article className="editorial-mini-card">
+          <span className="editorial-mini-label">Scheduled</span>
+          <strong>{loading ? '—' : scheduledCount}</strong>
+        </article>
+      </section>
 
       {error && <div className="admin-editor-error">{error}</div>}
 

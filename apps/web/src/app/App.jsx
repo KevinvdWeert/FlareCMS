@@ -2,7 +2,6 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '../features/auth/AuthContext';
 import { Login } from '../features/auth/Login';
-import { Signup } from '../features/auth/Signup';
 import { PasswordReset } from '../features/auth/PasswordReset';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -42,7 +41,6 @@ function App() {
 
             {/* Admin Routes */}
             <Route path="/admin/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
             <Route path="/password-reset" element={<PasswordReset />} />
 
             <Route element={<ProtectedRoute />}>
