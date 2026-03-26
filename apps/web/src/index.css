@@ -1907,6 +1907,10 @@ body {
   border-right: 0;
   color: #1b1c15;
   padding: 24px 18px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .admin-brand-wrap {
@@ -2079,6 +2083,15 @@ body {
 
 .admin-canvas {
   padding: 48px 40px 64px;
+}
+
+@media (max-width: 980px) {
+  .admin-sidebar {
+    position: static;
+    top: auto;
+    height: auto;
+    overflow-y: visible;
+  }
 }
 
 .admin-section-header {
@@ -2375,6 +2388,10 @@ body {
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: -0.04em;
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .admin-editor-title-input::placeholder {

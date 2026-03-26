@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPageById, createPage, updatePage, isSlugTaken } from '../../lib/firestore';
 import { uploadImageToServer } from '../../lib/storage';
@@ -38,6 +38,7 @@ export const PageEditor = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [uploadingCover, setUploadingCover] = useState(false);
+  const titleInputRef = useRef(null);
 
   // Homepage feature
   const [isHomepage, setIsHomepage] = useState(false);
@@ -101,6 +102,13 @@ export const PageEditor = () => {
       setSlug(title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''));
     }
   }, [title, id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const el = titleInputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.max(el.scrollHeight, 56)}px`;
+  }, [title]);
 
   const handleFeaturedImagePathChange = (value) => {
     const path = String(value || '').trim();
@@ -322,12 +330,13 @@ export const PageEditor = () => {
         <section className="admin-surface admin-editor-card admin-editor-main">
           <label className="admin-editor-field admin-editor-field-full">
             <span className="editorial-kicker">Feature Article</span>
-            <input
-              type="text"
+            <textarea
+              ref={titleInputRef}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="admin-editor-title-input"
               placeholder="Enter title..."
+              rows={1}
             />
           </label>
 
