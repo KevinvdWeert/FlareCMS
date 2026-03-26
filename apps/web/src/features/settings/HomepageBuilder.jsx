@@ -26,7 +26,7 @@ const move = (arr, from, to) => {
 };
 
 const newSection = () => ({
-  id: `section_${Date.now()}`,
+  id: `section_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
   type: 'cta_band',
   title: '',
   subtitle: '',

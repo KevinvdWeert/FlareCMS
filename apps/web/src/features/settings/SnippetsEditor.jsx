@@ -11,7 +11,7 @@ import {
 const SNIPPET_TYPES = ['announcement_bar', 'promo_strip', 'trust_badge_row', 'disclaimer'];
 
 const newSnippet = () => ({
-  id: `snippet_${Date.now()}`,
+  id: `snippet_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
   type: 'announcement_bar',
   title: '',
   content: '',
