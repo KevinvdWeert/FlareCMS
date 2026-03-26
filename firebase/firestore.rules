@@ -124,11 +124,25 @@ service cloud.firestore {
     // Settings Collection (system config)
     // ---------------------------------------------------------------------------
     match /settings/{settingId} {
-      // The 'general' document is publicly readable so the front-page setting
-      // can be used to render the public home page without authentication.
-      allow read: if settingId == 'general' || isAdmin();
+      // 'general', 'footer', and 'header' are publicly readable so that
+      // public pages can render the front-page, header, and footer without
+      // requiring authentication.  All other settings docs are staff-only.
+      allow read: if settingId == 'general'
+                  || settingId == 'footer'
+                  || settingId == 'header'
+                  || isStaff();
       // Only admins (via Cloud Functions) may write settings.
       allow write: if isAdmin();
+    }
+
+    // ---------------------------------------------------------------------------
+    // Settings History Collection (version snapshots written by Cloud Functions)
+    // ---------------------------------------------------------------------------
+    match /settingsHistory/{settingType}/versions/{versionId} {
+      // Staff can read version history; writes are handled by Cloud Functions
+      // (admin SDK bypasses rules).
+      allow read: if isStaff();
+      allow write: if false;
     }
   }
 }

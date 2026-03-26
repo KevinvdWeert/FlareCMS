@@ -102,7 +102,18 @@ export const PublicHome = () => {
     <div className="site-layout">
       <header className="site-header">
         <div className="header-content">
-          <Link to="/" className="site-logo">FlareCMS</Link>
+          <Link to="/" className="site-logo">{headerSettings?.logoText || 'FlareCMS'}</Link>
+          {headerSettings?.navItems?.filter((n) => n.visible !== false).map((item, i) =>
+            item.isExternal ? (
+              <a key={item.href || item.label || i} href={item.href} target="_blank" rel="noopener noreferrer" className="pub-nav-link">
+                {item.label}
+              </a>
+            ) : (
+              <Link key={item.href || item.label || i} to={item.href} className="pub-nav-link">
+                {item.label}
+              </Link>
+            )
+          )}
         </div>
       </header>
 

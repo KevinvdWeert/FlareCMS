@@ -594,13 +594,68 @@ export const callGetTrafficSummary = () =>
 // -----------------------------------------------------------------------
 
 /**
+ * Emits a structured console warning for a failed callable.
+ * @param {string} endpoint - The callable function name.
+ * @param {unknown} err - The caught error.
+ */
+const warnCallableError = (endpoint, err) => {
+  const code = err?.code || 'unknown';
+  const msg = err?.message || 'No error message';
+  console.warn(`[FlareCMS] Callable "${endpoint}" failed. code=${code} message=${msg}`);
+};
+
+/**
+ * Returns a user-facing error message for a failed callable.
+ * Translates opaque Firebase error codes into actionable text.
+ * @param {unknown} err
+ * @returns {string}
+ */
+const toUserFacingMessage = (err) => {
+  const code = String(err?.code || '');
+  const msg = String(err?.message || '').toLowerCase();
+  if (code.includes('permission-denied')) return 'You do not have permission to perform this action.';
+  if (code.includes('unauthenticated')) return 'You must be signed in to perform this action.';
+  if (code.includes('not-found')) return 'The requested resource was not found.';
+  if (
+    code.includes('internal') ||
+    code.includes('unavailable') ||
+    msg.includes('cors') ||
+    msg.includes('failed to fetch') ||
+    msg.includes('network')
+  ) {
+    return (
+      'Network error: could not reach Cloud Functions. ' +
+      'For local development set VITE_USE_EMULATORS=true and run `npm run emulators`.'
+    );
+  }
+  return err?.message || 'An unexpected error occurred.';
+};
+
+/**
+ * Wraps a settings callable, logging structured warnings and converting
+ * opaque Firebase errors into user-readable messages.
+ * @param {string} endpoint
+ * @param {() => Promise<unknown>} invoke
+ * @returns {Promise<unknown>}
+ */
+const invokeSettingsCallable = (endpoint, invoke) =>
+  invoke().catch((err) => {
+    warnCallableError(endpoint, err);
+    const friendly = new Error(toUserFacingMessage(err));
+    friendly.code = err?.code;
+    throw friendly;
+  });
+
+/**
  * Saves global site settings. Admin only.
  * @param {string} settingType
  * @param {object} settings
  * @param {boolean} publishNow
  */
 export const callSaveGlobalSettings = (settingType, settings, publishNow = true) =>
-  httpsCallable(functions, 'saveGlobalSettings')({ settingType, settings, publishNow });
+  invokeSettingsCallable('saveGlobalSettings', () =>
+    httpsCallable(functions, 'saveGlobalSettings')({ settingType, settings, publishNow })
+  );
 
 /**
  * Restores a specific settings version. Admin only.
@@ -608,7 +663,9 @@ export const callSaveGlobalSettings = (settingType, settings, publishNow = true)
  * @param {string} versionId
  */
 export const callRestoreSettingsVersion = (settingType, versionId) =>
-  httpsCallable(functions, 'restoreSettingsVersion')({ settingType, versionId });
+  invokeSettingsCallable('restoreSettingsVersion', () =>
+    httpsCallable(functions, 'restoreSettingsVersion')({ settingType, versionId })
+  );
 
 /**
  * Returns version history for a settings type. Staff only.
@@ -616,7 +673,9 @@ export const callRestoreSettingsVersion = (settingType, versionId) =>
  * @param {number} limit
  */
 export const callGetSettingsHistory = (settingType, limit = 10) =>
-  httpsCallable(functions, 'getSettingsHistory')({ settingType, limit });
+  invokeSettingsCallable('getSettingsHistory', () =>
+    httpsCallable(functions, 'getSettingsHistory')({ settingType, limit })
+  );
 
 /**
  * Publishes staging settings by token. Admin only.
@@ -624,4 +683,6 @@ export const callGetSettingsHistory = (settingType, limit = 10) =>
  * @param {string} stagingToken
  */
 export const callPublishStagingSettings = (settingType, stagingToken) =>
-  httpsCallable(functions, 'publishStagingSettings')({ settingType, stagingToken });
+  invokeSettingsCallable('publishStagingSettings', () =>
+    httpsCallable(functions, 'publishStagingSettings')({ settingType, stagingToken })
+  );
