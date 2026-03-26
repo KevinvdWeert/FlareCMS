@@ -28,8 +28,8 @@ export const AdminLayout = () => {
     <div className="admin-shell">
       <aside className="admin-sidebar">
         <div className="admin-brand-wrap">
-          <div className="admin-brand">Editorial</div>
-          <p className="admin-brand-subtitle">Monolith CMS</p>
+          <div className="admin-brand">FlareCMS</div>
+          <p className="admin-brand-subtitle">Firebase CMS</p>
         </div>
 
         <nav className="admin-nav">

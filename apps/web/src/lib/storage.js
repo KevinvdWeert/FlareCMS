@@ -54,10 +54,15 @@ export const uploadImageToServer = async (file) => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch('/api/upload-image', {
-    method: 'POST',
-    body: formData,
-  });
+  let response;
+  try {
+    response = await fetch('/api/upload-image', {
+      method: 'POST',
+      body: formData,
+    });
+  } catch (_err) {
+    throw new Error('Upload server is not reachable. Start from repo root with `npm run dev` (or run `npm run server:dev` in a separate terminal).');
+  }
 
   if (!response.ok) {
     const errJson = await response.json().catch(() => null);
@@ -67,6 +72,11 @@ export const uploadImageToServer = async (file) => {
       response.status === 500 &&
       /ECONNREFUSED|proxy|connect/i.test(errText)
     ) {
+      throw new Error('Upload server is not running. Start from repo root with `npm run dev` (or run `npm run server:dev` in a separate terminal).');
+    }
+
+    // Vite proxy can return an empty/plain 500 when the upload server is down.
+    if (response.status === 500 && !errJson && !String(errText || '').trim()) {
       throw new Error('Upload server is not running. Start from repo root with `npm run dev` (or run `npm run server:dev` in a separate terminal).');
     }
 
