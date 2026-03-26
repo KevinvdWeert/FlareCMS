@@ -1,121 +1,64 @@
 import React, { useEffect, useRef, useState } from 'react';
+import Quill from 'quill';
+import 'quill/dist/quill.snow.css';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadImageToServer } from '../../lib/storage';
 import { Type, Image as ImageIcon, Heading1, Trash, ArrowUp, ArrowDown, Quote, Minus, Images } from 'lucide-react';
 import { MediaPickerModal } from './MediaPickerModal';
 
 // ---------------------------------------------------------------------------
-// Helpers
+// QuillEditor — Quill-powered rich-text paragraph editor
 // ---------------------------------------------------------------------------
 
-/**
- * Converts a plain-text string into initial HTML for the rich-text editor.
- * If the string already contains HTML tags it is returned unchanged.
- * Plain-text newlines are converted to <br> so existing content is preserved.
- */
-const toInitialHtml = (text) => {
-  if (!text) return '';
-  // Use the same tag-specific check as BlockRenderer so plain-text
-  // comparison strings (e.g. "a < b") are never treated as HTML.
-  if (/<(b|i|em|strong|u|a|br|ul|ol|li|span|p)[\s/>]/i.test(text)) return text;
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\n/g, '<br>');
-};
+const QUILL_TOOLBAR_OPTIONS = [
+  ['bold', 'italic', 'underline'],
+  [{ list: 'ordered' }, { list: 'bullet' }],
+  ['link'],
+  ['clean'],
+];
 
-// ---------------------------------------------------------------------------
-// RichTextEditor — lightweight contenteditable paragraph editor
-// ---------------------------------------------------------------------------
+// Quill 2.x renders an empty editor as a single paragraph with a soft-break.
+const QUILL_EMPTY_HTML = '<p><br></p>';
 
-const RichTextEditor = ({ initialHtml, onChange }) => {
-  const ref = useRef(null);
+const QuillEditor = ({ initialHtml, onChange }) => {
+  const containerRef = useRef(null);
+  const quillRef = useRef(null);
 
-  // Set initial content once on mount; do not re-sync afterwards so the
-  // cursor position is never reset while the user is typing.
   useEffect(() => {
-    if (ref.current) {
-      ref.current.innerHTML = initialHtml || '';
+    if (!containerRef.current || quillRef.current) return;
+
+    const quill = new Quill(containerRef.current, {
+      theme: 'snow',
+      placeholder: 'Paragraph text…',
+      modules: {
+        toolbar: QUILL_TOOLBAR_OPTIONS,
+      },
+    });
+
+    // Seed with existing content (HTML from saved block data).
+    if (initialHtml) {
+      const delta = quill.clipboard.convert({ html: initialHtml });
+      quill.setContents(delta, 'silent');
     }
+
+    quill.on('text-change', () => {
+      // Emit empty string when the editor only contains the empty Quill paragraph.
+      const html = quill.getSemanticHTML();
+      onChange?.(html === QUILL_EMPTY_HTML ? '' : html);
+    });
+
+    quillRef.current = quill;
+
+    return () => {
+      // Clean up: remove the Quill-generated toolbar sibling before React
+      // unmounts the container so we don't leave orphaned DOM nodes.
+      const toolbar = quillRef.current?.getModule('toolbar');
+      toolbar?.container?.remove();
+      quillRef.current = null;
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const exec = (command, value = null) => {
-    ref.current?.focus();
-    // document.execCommand is deprecated per MDN but remains the simplest
-    // cross-browser approach for a lightweight rich-text toolbar without
-    // pulling in a third-party library.  Monitor browser support and migrate
-    // to the Selection/Range API if execCommand is removed.
-    document.execCommand(command, false, value);
-    onChange?.(ref.current?.innerHTML || '');
-  };
-
-  const handleLinkInsert = () => {
-    const selection = window.getSelection();
-    const hasSelection = selection && selection.toString().length > 0;
-    if (!hasSelection) ref.current?.focus();
-    // eslint-disable-next-line no-alert
-    const url = window.prompt('Enter URL (e.g. https://example.com):');
-    if (url && url.trim()) exec('createLink', url.trim());
-  };
-
-  return (
-    <div className="rich-editor-wrap">
-      <div className="rich-toolbar" role="toolbar" aria-label="Text formatting">
-        <button
-          type="button"
-          className="rich-toolbar-btn"
-          title="Bold (Ctrl+B)"
-          onMouseDown={(e) => { e.preventDefault(); exec('bold'); }}
-        >
-          <strong>B</strong>
-        </button>
-        <button
-          type="button"
-          className="rich-toolbar-btn"
-          title="Italic (Ctrl+I)"
-          onMouseDown={(e) => { e.preventDefault(); exec('italic'); }}
-        >
-          <em>I</em>
-        </button>
-        <button
-          type="button"
-          className="rich-toolbar-btn"
-          title="Underline (Ctrl+U)"
-          onMouseDown={(e) => { e.preventDefault(); exec('underline'); }}
-        >
-          <span style={{ textDecoration: 'underline' }}>U</span>
-        </button>
-        <span className="rich-toolbar-divider" aria-hidden="true" />
-        <button
-          type="button"
-          className="rich-toolbar-btn"
-          title="Insert link"
-          onMouseDown={(e) => { e.preventDefault(); handleLinkInsert(); }}
-        >
-          Link
-        </button>
-        <button
-          type="button"
-          className="rich-toolbar-btn"
-          title="Clear formatting"
-          onMouseDown={(e) => { e.preventDefault(); exec('removeFormat'); }}
-        >
-          Clear
-        </button>
-      </div>
-      <div
-        ref={ref}
-        contentEditable
-        suppressContentEditableWarning
-        className="block-input block-richtext"
-        onInput={() => onChange?.(ref.current?.innerHTML || '')}
-        data-placeholder="Paragraph text…"
-        role="textbox"
-        aria-multiline="true"
-      />
-    </div>
-  );
+  return <div className="quill-editor-wrap" ref={containerRef} />;
 };
 
 // ---------------------------------------------------------------------------
@@ -278,11 +221,11 @@ export const BlockEditor = ({ blocks, setBlocks }) => {
               </div>
             )}
 
-            {/* Paragraph — rich-text editor */}
+            {/* Paragraph — Quill rich-text editor */}
             {block.type === 'paragraph' && (
-              <RichTextEditor
+              <QuillEditor
                 key={block.id}
-                initialHtml={toInitialHtml(block.text || '')}
+                initialHtml={block.text || ''}
                 onChange={(html) => updateBlock(index, 'text', html)}
               />
             )}

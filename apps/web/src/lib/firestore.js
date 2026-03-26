@@ -226,6 +226,22 @@ export const getGeneralSettings = async () => {
 };
 
 /**
+ * Returns the page that has isHomepage set to true, or null if none is set.
+ * Falls back to settings/general.frontPageId for backward compatibility.
+ * @returns {Promise<object|null>}
+ */
+export const getHomepagePage = async () => {
+  const pagesRef = collection(db, 'pages');
+  const q = query(pagesRef, where('isHomepage', '==', true), where('status', '==', 'published'));
+  const snap = await getDocs(q);
+  if (!snap.empty) {
+    const d = snap.docs[0];
+    return { id: d.id, ...d.data() };
+  }
+  return null;
+};
+
+/**
  * Converts a Firestore Timestamp value to a JavaScript Date.
  *
  * Cloud Functions callables serialize Firestore Timestamps as plain objects

@@ -316,6 +316,8 @@ export const unpublishPage = functions.https.onCall(async (data, context) => {
 /**
  * Callable: Set or clear the site's front page. Admin only.
  * Pass pageId to set a published page as the front page, or null to clear it.
+ * Also updates the isHomepage boolean on the relevant page documents so the
+ * public router can query pages directly by isHomepage === true.
  */
 export const setFrontPage = functions.https.onCall(async (data, context) => {
   const log = createLogger();
@@ -343,6 +345,24 @@ export const setFrontPage = functions.https.onCall(async (data, context) => {
       );
     }
   }
+
+  // Clear isHomepage on ALL pages that currently have it set to true — this
+  // intentionally fetches without a limit so that any data inconsistency
+  // (multiple pages incorrectly flagged) is corrected in one atomic batch.
+  const currentHomepageSnap = await db.collection("pages").where("isHomepage", "==", true).get();
+  const batch = db.batch();
+  currentHomepageSnap.docs.forEach((d) => {
+    if (d.id !== pageId) {
+      batch.update(d.ref, { isHomepage: false });
+    }
+  });
+
+  // Set isHomepage on the new front page (or do nothing if clearing).
+  if (pageId != null) {
+    batch.update(db.collection("pages").doc(pageId), { isHomepage: true });
+  }
+
+  await batch.commit();
 
   await db.collection("settings").doc("general").set(
     {

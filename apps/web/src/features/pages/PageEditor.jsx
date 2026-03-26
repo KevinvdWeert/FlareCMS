@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPageById, createPage, updatePage, isSlugTaken } from '../../lib/firestore';
 import { uploadImageToServer } from '../../lib/storage';
-import { callRegisterMediaAsset } from '../../lib/functions';
+import { callRegisterMediaAsset, callSetFrontPage } from '../../lib/functions';
 import { useAuth } from '../auth/useAuth';
 import { useImageUrl } from '../../hooks/useImageUrl';
 import { BlockEditor } from '../blocks/BlockEditor';
-import { ArrowLeft, Save, Send, X, Plus } from 'lucide-react';
+import { ArrowLeft, Save, Send, X, Plus, Home } from 'lucide-react';
 import { validateSlug, validateTitle } from '../../lib/validation';
 
 export const PageEditor = () => {
@@ -38,6 +38,11 @@ export const PageEditor = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [uploadingCover, setUploadingCover] = useState(false);
+
+  // Homepage feature
+  const [isHomepage, setIsHomepage] = useState(false);
+  const [settingHomepage, setSettingHomepage] = useState(false);
+  const isAdmin = user?.role === 'admin';
   
   // Resolve featured image path to displayable URL
   const displayImagePath = featuredImagePath.startsWith('/') ? featuredImagePath : `/${featuredImagePath}`;
@@ -67,6 +72,8 @@ export const PageEditor = () => {
           setMetaDescription(page.seoMetadata?.metaDescription || '');
           // Tags (optional field — backward compatible)
           setTags(Array.isArray(page.tags) ? page.tags : []);
+          // isHomepage flag
+          setIsHomepage(page.isHomepage === true);
           // Scheduled publish (optional field)
           if (page.scheduledPublishAt) {
             const d = page.scheduledPublishAt?.seconds
@@ -165,6 +172,25 @@ export const PageEditor = () => {
 
   const handleRemoveTag = (tag) => {
     setTags((prev) => prev.filter((t) => t !== tag));
+  };
+
+  const handleSetHomepage = async () => {
+    if (!id) return;
+    const newValue = !isHomepage;
+    const action = newValue ? 'set this page as the homepage?' : 'remove this page as the homepage?';
+    // eslint-disable-next-line no-alert
+    if (!window.confirm(`Are you sure you want to ${action}`)) return;
+    setSettingHomepage(true);
+    setError('');
+    try {
+      await callSetFrontPage(newValue ? id : null);
+      setIsHomepage(newValue);
+    } catch (err) {
+      console.error('Failed to update homepage:', err);
+      setError(err?.message || 'Failed to update homepage setting.');
+    } finally {
+      setSettingHomepage(false);
+    }
   };
 
   const [saveSuccess, setSaveSuccess] = useState('');
@@ -315,6 +341,31 @@ export const PageEditor = () => {
           <p className="admin-editor-slug-preview admin-muted-text">
             Path: <code>{(slugPrefix || '/') + slug}</code>
           </p>
+
+          {/* Homepage — admin only, existing published pages only */}
+          {id && isAdmin && status === 'published' && (
+            <>
+              <div className="admin-editor-section-divider" />
+              <div className="admin-editor-homepage-row">
+                {isHomepage && (
+                  <span className="admin-badge front-page" title="This page is the current homepage">
+                    <Home size={11} />
+                    Homepage
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSetHomepage}
+                  disabled={settingHomepage}
+                  className={`admin-button-secondary admin-homepage-btn${isHomepage ? ' is-active' : ''}`}
+                  title={isHomepage ? 'Remove as homepage' : 'Set as homepage'}
+                >
+                  <Home size={15} />
+                  <span>{settingHomepage ? 'Updating…' : isHomepage ? 'Remove Homepage' : 'Set as Homepage'}</span>
+                </button>
+              </div>
+            </>
+          )}
 
           <div className="admin-editor-section-divider" />
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getPages, getGeneralSettings } from '../../lib/firestore';
+import { getPages, getGeneralSettings, getHomepagePage } from '../../lib/firestore';
 import { Link } from 'react-router-dom';
 import { useImageUrl } from '../../hooks/useImageUrl';
 
@@ -14,9 +14,10 @@ export const PublicHome = () => {
       setLoading(true);
       setLoadError('');
       try {
-        const [data, settings] = await Promise.race([
+        const [data, homepage, settings] = await Promise.race([
           Promise.all([
             getPages(true),
+            getHomepagePage(),
             getGeneralSettings(),
           ]),
           new Promise((_, reject) =>
@@ -24,15 +25,18 @@ export const PublicHome = () => {
           )
         ]);
         const allPages = Array.isArray(data) ? data : [];
-        const fpId = settings?.frontPageId ?? null;
-        if (fpId) {
-          const fp = allPages.find((p) => p.id === fpId) || null;
-          setFrontPage(fp);
-          setPages(allPages.filter((p) => p.id !== fpId));
-        } else {
-          setFrontPage(null);
-          setPages(allPages);
+
+        // Prefer the page with isHomepage === true; fall back to settings.frontPageId.
+        let fp = homepage;
+        if (!fp) {
+          const fpId = settings?.frontPageId ?? null;
+          if (fpId) {
+            fp = allPages.find((p) => p.id === fpId) || null;
+          }
         }
+
+        setFrontPage(fp);
+        setPages(fp ? allPages.filter((p) => p.id !== fp.id) : allPages);
       } catch (error) {
         console.error('Failed to load published pages:', error);
         setPages([]);
