@@ -1,16 +1,136 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadImageToServer } from '../../lib/storage';
-import { Type, Image as ImageIcon, Heading1, Trash, ArrowUp, ArrowDown } from 'lucide-react';
+import { Type, Image as ImageIcon, Heading1, Trash, ArrowUp, ArrowDown, Quote, Minus, Images } from 'lucide-react';
+import { MediaPickerModal } from './MediaPickerModal';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Converts a plain-text string into initial HTML for the rich-text editor.
+ * If the string already contains HTML tags it is returned unchanged.
+ * Plain-text newlines are converted to <br> so existing content is preserved.
+ */
+const toInitialHtml = (text) => {
+  if (!text) return '';
+  // Use the same tag-specific check as BlockRenderer so plain-text
+  // comparison strings (e.g. "a < b") are never treated as HTML.
+  if (/<(b|i|em|strong|u|a|br|ul|ol|li|span|p)[\s/>]/i.test(text)) return text;
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>');
+};
+
+// ---------------------------------------------------------------------------
+// RichTextEditor — lightweight contenteditable paragraph editor
+// ---------------------------------------------------------------------------
+
+const RichTextEditor = ({ initialHtml, onChange }) => {
+  const ref = useRef(null);
+
+  // Set initial content once on mount; do not re-sync afterwards so the
+  // cursor position is never reset while the user is typing.
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.innerHTML = initialHtml || '';
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const exec = (command, value = null) => {
+    ref.current?.focus();
+    // document.execCommand is deprecated per MDN but remains the simplest
+    // cross-browser approach for a lightweight rich-text toolbar without
+    // pulling in a third-party library.  Monitor browser support and migrate
+    // to the Selection/Range API if execCommand is removed.
+    document.execCommand(command, false, value);
+    onChange?.(ref.current?.innerHTML || '');
+  };
+
+  const handleLinkInsert = () => {
+    const selection = window.getSelection();
+    const hasSelection = selection && selection.toString().length > 0;
+    if (!hasSelection) ref.current?.focus();
+    // eslint-disable-next-line no-alert
+    const url = window.prompt('Enter URL (e.g. https://example.com):');
+    if (url && url.trim()) exec('createLink', url.trim());
+  };
+
+  return (
+    <div className="rich-editor-wrap">
+      <div className="rich-toolbar" role="toolbar" aria-label="Text formatting">
+        <button
+          type="button"
+          className="rich-toolbar-btn"
+          title="Bold (Ctrl+B)"
+          onMouseDown={(e) => { e.preventDefault(); exec('bold'); }}
+        >
+          <strong>B</strong>
+        </button>
+        <button
+          type="button"
+          className="rich-toolbar-btn"
+          title="Italic (Ctrl+I)"
+          onMouseDown={(e) => { e.preventDefault(); exec('italic'); }}
+        >
+          <em>I</em>
+        </button>
+        <button
+          type="button"
+          className="rich-toolbar-btn"
+          title="Underline (Ctrl+U)"
+          onMouseDown={(e) => { e.preventDefault(); exec('underline'); }}
+        >
+          <span style={{ textDecoration: 'underline' }}>U</span>
+        </button>
+        <span className="rich-toolbar-divider" aria-hidden="true" />
+        <button
+          type="button"
+          className="rich-toolbar-btn"
+          title="Insert link"
+          onMouseDown={(e) => { e.preventDefault(); handleLinkInsert(); }}
+        >
+          Link
+        </button>
+        <button
+          type="button"
+          className="rich-toolbar-btn"
+          title="Clear formatting"
+          onMouseDown={(e) => { e.preventDefault(); exec('removeFormat'); }}
+        >
+          Clear
+        </button>
+      </div>
+      <div
+        ref={ref}
+        contentEditable
+        suppressContentEditableWarning
+        className="block-input block-richtext"
+        onInput={() => onChange?.(ref.current?.innerHTML || '')}
+        data-placeholder="Paragraph text…"
+        role="textbox"
+        aria-multiline="true"
+      />
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// BlockEditor
+// ---------------------------------------------------------------------------
 
 export const BlockEditor = ({ blocks, setBlocks }) => {
   const [pathError, setPathError] = useState('');
   const [uploadingBlockId, setUploadingBlockId] = useState('');
+  const [mediaPickerBlockIndex, setMediaPickerBlockIndex] = useState(null);
 
   const addBlock = (type) => {
     const newBlock = { id: uuidv4(), type };
     if (type === 'heading') {
-      newBlock.level = 1;
+      newBlock.level = 2; // Default to H2 — H1 is reserved for the page title
       newBlock.text = '';
     } else if (type === 'paragraph') {
       newBlock.text = '';
@@ -19,18 +139,23 @@ export const BlockEditor = ({ blocks, setBlocks }) => {
       newBlock.imagePath = '';
       newBlock.alt = '';
       newBlock.caption = '';
+    } else if (type === 'quote') {
+      newBlock.text = '';
+      newBlock.attribution = '';
     }
+    // 'divider' has no extra fields
     setBlocks([...blocks, newBlock]);
   };
 
   const updateBlock = (index, field, value) => {
     const newBlocks = [...blocks];
-    newBlocks[index][field] = value;
+    newBlocks[index] = { ...newBlocks[index], [field]: value };
     setBlocks(newBlocks);
   };
 
   const removeBlock = (index) => {
-    if (window.confirm("Delete this block?")) {
+    // eslint-disable-next-line no-alert
+    if (window.confirm('Delete this block?')) {
       const newBlocks = [...blocks];
       newBlocks.splice(index, 1);
       setBlocks(newBlocks);
@@ -40,27 +165,10 @@ export const BlockEditor = ({ blocks, setBlocks }) => {
   const moveBlock = (index, direction) => {
     if (direction === -1 && index === 0) return;
     if (direction === 1 && index === blocks.length - 1) return;
-    
     const newBlocks = [...blocks];
     const temp = newBlocks[index];
     newBlocks[index] = newBlocks[index + direction];
     newBlocks[index + direction] = temp;
-    setBlocks(newBlocks);
-  };
-
-  const handleImagePathSet = (index, value) => {
-    setPathError('');
-    const path = (value || '').trim();
-    if (!path) {
-      setPathError('Image path is required for image blocks.');
-      return;
-    }
-    const normalized = path.startsWith('/') ? path.slice(1) : path;
-    const newBlocks = [...blocks];
-    newBlocks[index].storagePath = normalized;
-    if (!newBlocks[index].alt) {
-      newBlocks[index].alt = normalized.split('/').pop() || '';
-    }
     setBlocks(newBlocks);
   };
 
@@ -73,12 +181,13 @@ export const BlockEditor = ({ blocks, setBlocks }) => {
       const uploaded = await uploadImageToServer(file);
       const normalizedPath = String(uploaded.path || '').replace(/^\//, '');
       const newBlocks = [...blocks];
-      newBlocks[index].storagePath = normalizedPath;
-      newBlocks[index].imagePath = normalizedPath;
-      newBlocks[index].imageId = '';
-      if (!newBlocks[index].alt) {
-        newBlocks[index].alt = uploaded.fileName || file.name || '';
-      }
+      newBlocks[index] = {
+        ...newBlocks[index],
+        storagePath: normalizedPath,
+        imagePath: normalizedPath,
+        imageId: '',
+        alt: newBlocks[index].alt || uploaded.fileName || file.name || '',
+      };
       setBlocks(newBlocks);
     } catch (err) {
       console.error('Block image upload failed:', err);
@@ -88,8 +197,36 @@ export const BlockEditor = ({ blocks, setBlocks }) => {
     }
   };
 
+  const handleMediaPickerSelect = (asset) => {
+    const index = mediaPickerBlockIndex;
+    setMediaPickerBlockIndex(null);
+    if (index === null || !asset) return;
+    const normalizedPath = String(asset.storagePath || '').replace(/^\//, '');
+    const newBlocks = [...blocks];
+    newBlocks[index] = {
+      ...newBlocks[index],
+      storagePath: normalizedPath,
+      imagePath: normalizedPath,
+      imageId: asset.id || '',
+      alt: newBlocks[index].alt || asset.fileName || normalizedPath.split('/').pop() || '',
+    };
+    setBlocks(newBlocks);
+  };
+
+  const blockTypeLabel = (type) => {
+    switch (type) {
+      case 'heading':   return 'Heading Block';
+      case 'paragraph': return 'Paragraph Block';
+      case 'image':     return 'Image Block';
+      case 'quote':     return 'Quote Block';
+      case 'divider':   return 'Divider Block';
+      default:          return 'Block';
+    }
+  };
+
   return (
     <div className="block-editor">
+      {/* Block-type toolbar */}
       <div className="block-toolbar">
         <button onClick={() => addBlock('heading')} className="block-toolbar-btn" type="button">
           <Heading1 size={16} /> Heading
@@ -97,8 +234,14 @@ export const BlockEditor = ({ blocks, setBlocks }) => {
         <button onClick={() => addBlock('paragraph')} className="block-toolbar-btn" type="button">
           <Type size={16} /> Paragraph
         </button>
+        <button onClick={() => addBlock('quote')} className="block-toolbar-btn" type="button">
+          <Quote size={16} /> Quote
+        </button>
         <button onClick={() => addBlock('image')} className="block-toolbar-btn" type="button">
           <ImageIcon size={16} /> Image
+        </button>
+        <button onClick={() => addBlock('divider')} className="block-toolbar-btn" type="button">
+          <Minus size={16} /> Divider
         </button>
       </div>
 
@@ -109,71 +252,119 @@ export const BlockEditor = ({ blocks, setBlocks }) => {
       <div className="block-list">
         {blocks.map((block, index) => (
           <div key={block.id} className="block-item">
-            
             <div className="block-item-actions">
               <button disabled={index === 0} onClick={() => moveBlock(index, -1)} className="block-icon-btn" type="button"><ArrowUp size={14} /></button>
               <button disabled={index === blocks.length - 1} onClick={() => moveBlock(index, 1)} className="block-icon-btn" type="button"><ArrowDown size={14} /></button>
               <button onClick={() => removeBlock(index)} className="block-icon-btn danger" type="button"><Trash size={14} /></button>
             </div>
 
-            <div className="block-type-label">
-              {block.type === 'heading' ? 'Heading Block' : block.type === 'paragraph' ? 'Paragraph Block' : 'Image Block'}
-            </div>
+            <div className="block-type-label">{blockTypeLabel(block.type)}</div>
 
+            {/* Heading */}
             {block.type === 'heading' && (
               <div className="block-form-row">
-                <select value={block.level} onChange={(e) => updateBlock(index, 'level', parseInt(e.target.value))} className="block-input">
+                <select value={block.level} onChange={(e) => updateBlock(index, 'level', parseInt(e.target.value, 10))} className="block-input">
                   <option value={1}>H1</option>
                   <option value={2}>H2</option>
                   <option value={3}>H3</option>
                 </select>
-                <input 
-                  type="text" 
-                  value={block.text} 
-                  onChange={(e) => updateBlock(index, 'text', e.target.value)} 
-                  placeholder="Heading text..." 
+                <input
+                  type="text"
+                  value={block.text}
+                  onChange={(e) => updateBlock(index, 'text', e.target.value)}
+                  placeholder="Heading text…"
                   className="block-input block-input-grow"
                 />
               </div>
             )}
 
+            {/* Paragraph — rich-text editor */}
             {block.type === 'paragraph' && (
-              <div className="block-form-row">
-                <textarea 
-                  value={block.text} 
-                  onChange={(e) => updateBlock(index, 'text', e.target.value)} 
-                  placeholder="Paragraph text..." 
+              <RichTextEditor
+                key={block.id}
+                initialHtml={toInitialHtml(block.text || '')}
+                onChange={(html) => updateBlock(index, 'text', html)}
+              />
+            )}
+
+            {/* Quote */}
+            {block.type === 'quote' && (
+              <div className="block-form-column">
+                <textarea
+                  value={block.text || ''}
+                  onChange={(e) => updateBlock(index, 'text', e.target.value)}
+                  placeholder="Quote text…"
                   className="block-input block-input-grow block-textarea"
                 />
+                <input
+                  type="text"
+                  value={block.attribution || ''}
+                  onChange={(e) => updateBlock(index, 'attribution', e.target.value)}
+                  placeholder="Attribution — Author or Source (optional)"
+                  className="block-input block-input-grow"
+                />
               </div>
             )}
 
+            {/* Divider */}
+            {block.type === 'divider' && (
+              <div className="block-divider-preview" aria-hidden="true">
+                <hr className="block-divider-line" />
+                <span className="block-type-label" style={{ display: 'block', textAlign: 'center', marginTop: '6px' }}>
+                  Section Separator
+                </span>
+              </div>
+            )}
+
+            {/* Image */}
             {block.type === 'image' && (
               <div className="block-form-column">
-                <input
-                  className="block-input block-input-grow"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    handleImageUpload(index, e.target.files?.[0]);
-                    e.target.value = '';
-                  }}
-                  disabled={uploadingBlockId === block.id}
-                />
-                {uploadingBlockId === block.id && (
-                  <p className="admin-muted-text">Uploading image...</p>
+                {/* Upload or pick from library */}
+                {!block.storagePath && (
+                  <div className="block-image-actions">
+                    <label className="block-image-upload-label">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="block-image-file-input"
+                        onChange={(e) => {
+                          handleImageUpload(index, e.target.files?.[0]);
+                          e.target.value = '';
+                        }}
+                        disabled={uploadingBlockId === block.id}
+                      />
+                      <span className="block-toolbar-btn">
+                        <ImageIcon size={14} />
+                        {uploadingBlockId === block.id ? ' Uploading…' : ' Upload Image'}
+                      </span>
+                    </label>
+                    <button
+                      type="button"
+                      className="block-toolbar-btn"
+                      onClick={() => setMediaPickerBlockIndex(index)}
+                      disabled={uploadingBlockId === block.id}
+                    >
+                      <Images size={14} /> Browse Library
+                    </button>
+                  </div>
                 )}
+
+                {uploadingBlockId === block.id && (
+                  <p className="admin-muted-text">Uploading image…</p>
+                )}
+
                 {block.storagePath && (
                   <div className="block-image-meta">
                     <img
                       src={`/${block.storagePath.replace(/^\/+/, '')}`}
                       alt={block.alt || ''}
-                      style={{ maxWidth: '100%', maxHeight: '120px', objectFit: 'cover', borderRadius: '4px', marginBottom: '6px' }}
+                      style={{ maxWidth: '100%', maxHeight: '140px', objectFit: 'cover', borderRadius: '6px', marginBottom: '8px', display: 'block' }}
                     />
                     <p><strong>Path:</strong> /{block.storagePath}</p>
                     <button
                       type="button"
                       className="block-icon-btn"
+                      style={{ marginTop: '6px' }}
                       onClick={() => {
                         const newBlocks = [...blocks];
                         newBlocks[index] = { ...newBlocks[index], imageId: '', imagePath: '', storagePath: '', alt: '' };
@@ -184,31 +375,41 @@ export const BlockEditor = ({ blocks, setBlocks }) => {
                     </button>
                   </div>
                 )}
+
                 <input
                   type="text"
                   value={block.alt || ''}
                   onChange={(e) => updateBlock(index, 'alt', e.target.value)}
-                  placeholder="Alt text..."
+                  placeholder="Alt text…"
                   className="block-input block-input-grow"
                 />
-                <input 
-                  type="text" 
-                  value={block.caption || ''} 
-                  onChange={(e) => updateBlock(index, 'caption', e.target.value)} 
-                  placeholder="Optional caption..." 
+                <input
+                  type="text"
+                  value={block.caption || ''}
+                  onChange={(e) => updateBlock(index, 'caption', e.target.value)}
+                  placeholder="Optional caption…"
                   className="block-input block-input-grow"
                 />
               </div>
             )}
-
           </div>
         ))}
+
         {blocks.length === 0 && (
           <div className="block-empty-state">
             No blocks added yet. Use the buttons above to add content.
           </div>
         )}
       </div>
+
+      {/* Media Picker Modal */}
+      {mediaPickerBlockIndex !== null && (
+        <MediaPickerModal
+          onSelect={handleMediaPickerSelect}
+          onClose={() => setMediaPickerBlockIndex(null)}
+        />
+      )}
     </div>
   );
 };
+
