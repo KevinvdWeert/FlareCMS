@@ -85,11 +85,12 @@ If seeding fails:
 - `ECONNREFUSED` while creating users:
 	Auth emulator is not running on `localhost:9099`. Start emulators first with `npm run emulators`.
 
-This creates three demo users:
+This creates four demo users:
 | Role    | Email                    | Password       |
 |---------|--------------------------|----------------|
 | admin   | admin@flarecms.dev       | Admin1234!     |
 | editor  | editor@flarecms.dev      | Editor1234!    |
+| writer  | writer@flarecms.dev      | Writer1234!    |
 | user    | user@flarecms.dev        | User1234!      |
 
 These credentials are not automatically created in production Firebase projects.
@@ -124,6 +125,9 @@ Edit `.firebaserc`:
 cp apps/web/.env.example apps/web/.env.local
 # Fill in all VITE_FIREBASE_* values from Firebase Console > Project Settings > Your Apps
 # Leave VITE_USE_EMULATORS unset or false
+
+# Optional but recommended for SEO artifacts generated during build:
+export SITE_URL=https://your-domain.com
 ```
 
 ### 4. Deploy everything
@@ -131,6 +135,13 @@ cp apps/web/.env.example apps/web/.env.local
 ```bash
 npm run deploy
 ```
+
+`npm run web:build` now also generates SEO artifacts in `apps/web/dist`:
+
+- prerendered HTML files for `/` and each published `/:slug` page
+- canonical + Open Graph + Twitter meta tags in initial HTML
+- `sitemap.xml`
+- `robots.txt`
 
 Or step by step:
 ```bash
@@ -160,6 +171,7 @@ This creates/updates these Auth users with roles and profile documents:
 |---------|---------------------|-------------|
 | admin   | admin@flarecms.dev  | Admin1234!  |
 | editor  | editor@flarecms.dev | Editor1234! |
+| writer  | writer@flarecms.dev | Writer1234! |
 | user    | user@flarecms.dev   | User1234!   |
 
 Firestore writes include:

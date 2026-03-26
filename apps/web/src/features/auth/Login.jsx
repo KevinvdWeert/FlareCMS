@@ -63,7 +63,7 @@ export const Login = () => {
       </form>
       <p className="auth-note">Your permissions are synced from Firebase role policy.</p>
       <p className="auth-links">
-        <Link to="/password-reset">Forgot password?</Link> · <Link to="/signup">Create account</Link>
+        <Link to="/password-reset">Forgot password?</Link>
       </p>
       </div>
     </div>

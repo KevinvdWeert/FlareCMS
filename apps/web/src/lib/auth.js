@@ -2,13 +2,9 @@ import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
-  updateProfile
+  sendPasswordResetEmail
 } from 'firebase/auth';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth } from './firebase';
-import { db } from './firebase';
 import { normalizeEmail } from './validation';
 
 const LOGIN_FAILURE_KEY = 'flarecms-login-failures';
@@ -63,21 +59,6 @@ export const logoutFirebase = async () => {
 
 export const observeAuthState = (callback) => {
   return onAuthStateChanged(auth, callback);
-};
-
-export const signupFirebase = async (email, password, displayName) => {
-  const normalizedEmail = normalizeEmail(email);
-  const credentials = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
-  const trimmedName = displayName.trim();
-  await updateProfile(credentials.user, { displayName: trimmedName });
-  await setDoc(doc(db, 'users', credentials.user.uid), {
-    email: normalizedEmail,
-    fullName: trimmedName,
-    displayName: trimmedName,
-    role: 'user',
-    createdAt: serverTimestamp()
-  }, { merge: true });
-  return credentials;
 };
 
 export const sendResetPasswordEmail = async (email) => {

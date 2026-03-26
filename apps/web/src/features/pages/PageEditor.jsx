@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPageById, createPage, updatePage, isSlugTaken } from '../../lib/firestore';
 import { uploadImageToServer } from '../../lib/storage';
@@ -12,7 +12,7 @@ import { validateSlug, validateTitle } from '../../lib/validation';
 export const PageEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
@@ -38,11 +38,11 @@ export const PageEditor = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [uploadingCover, setUploadingCover] = useState(false);
+  const titleInputRef = useRef(null);
 
   // Homepage feature
   const [isHomepage, setIsHomepage] = useState(false);
   const [settingHomepage, setSettingHomepage] = useState(false);
-  const isAdmin = user?.role === 'admin';
   
   // Resolve featured image path to displayable URL
   const displayImagePath = featuredImagePath.startsWith('/') ? featuredImagePath : `/${featuredImagePath}`;
@@ -102,6 +102,13 @@ export const PageEditor = () => {
       setSlug(title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''));
     }
   }, [title, id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const el = titleInputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.max(el.scrollHeight, 56)}px`;
+  }, [title]);
 
   const handleFeaturedImagePathChange = (value) => {
     const path = String(value || '').trim();
@@ -194,6 +201,14 @@ export const PageEditor = () => {
   };
 
   const [saveSuccess, setSaveSuccess] = useState('');
+
+  const totalBlocks = blocks.length;
+  const estimatedWords = blocks
+    .map((b) => `${b?.text || ''} ${b?.caption || ''} ${b?.attribution || ''}`)
+    .join(' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -292,16 +307,36 @@ export const PageEditor = () => {
       {error && <div className="admin-editor-error">{error}</div>}
       {saveSuccess && <div className="admin-editor-success">{saveSuccess}</div>}
 
+      <section className="editorial-cards-grid editorial-cards-compact">
+        <article className="editorial-mini-card">
+          <span className="editorial-mini-label">Status</span>
+          <strong>{status === 'published' ? 'Published' : 'Draft'}</strong>
+        </article>
+        <article className="editorial-mini-card">
+          <span className="editorial-mini-label">Blocks</span>
+          <strong>{totalBlocks}</strong>
+        </article>
+        <article className="editorial-mini-card">
+          <span className="editorial-mini-label">Words</span>
+          <strong>{estimatedWords || 0}</strong>
+        </article>
+        <article className="editorial-mini-card">
+          <span className="editorial-mini-label">SEO</span>
+          <strong>92</strong>
+        </article>
+      </section>
+
       <div className="admin-editor-workspace">
         <section className="admin-surface admin-editor-card admin-editor-main">
           <label className="admin-editor-field admin-editor-field-full">
             <span className="editorial-kicker">Feature Article</span>
-            <input
-              type="text"
+            <textarea
+              ref={titleInputRef}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="admin-editor-title-input"
               placeholder="Enter title..."
+              rows={1}
             />
           </label>
 

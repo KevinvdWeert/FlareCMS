@@ -10,6 +10,7 @@ const ACTION_LABELS = {
   page_published: 'published page',
   page_unpublished: 'unpublished page',
   role_change: 'changed role',
+  user_profile: 'updated role profile',
   media_uploaded: 'uploaded media',
   media_deleted: 'deleted media',
   invite_created: 'invited user',
@@ -164,7 +165,7 @@ export const Dashboard = () => {
                   <div key={item.id} className="dashboard-activity-row">
                     <div>
                       <p>
-                        {item.actorEmail || item.actorId}{' '}
+                        {item.actorName || item.actorEmail || item.actorId}{' '}
                         {ACTION_LABELS[item.action] || item.action}
                         {item.meta?.title ? ` "${item.meta.title}"` : ''}
                       </p>

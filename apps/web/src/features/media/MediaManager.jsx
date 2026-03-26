@@ -244,6 +244,25 @@ export const MediaManager = () => {
         </div>
       </section>
 
+      <section className="editorial-cards-grid">
+        <article className="editorial-mini-card">
+          <span className="editorial-mini-label">Total Assets</span>
+          <strong>{loading ? '—' : assets.length}</strong>
+        </article>
+        <article className="editorial-mini-card">
+          <span className="editorial-mini-label">Selected</span>
+          <strong>{selectedCount}</strong>
+        </article>
+        <article className="editorial-mini-card">
+          <span className="editorial-mini-label">View Mode</span>
+          <strong>{viewMode === 'grid' ? 'Grid' : 'List'}</strong>
+        </article>
+        <article className="editorial-mini-card">
+          <span className="editorial-mini-label">Storage Health</span>
+          <strong>{uploadError ? 'Warning' : 'Healthy'}</strong>
+        </article>
+      </section>
+
       <section className="media-toolbar">
         <div className="media-toolbar-left">
           <label className="media-select-all">

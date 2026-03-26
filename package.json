@@ -13,7 +13,7 @@
     "functions:build": "cd functions && npm run build",
     "functions:watch": "cd functions && npm run watch",
     "web:dev": "cd apps/web && npm run dev",
-    "web:build": "cd apps/web && npm run build",
+    "web:build": "cd apps/web && npm run build && cd ../.. && node scripts/generate_public_seo.js",
     "server:dev": "node server/index.js",
     "dev": "concurrently --names \"web,server\" --prefix-colors \"cyan,magenta\" \"npm run web:dev\" \"npm run server:dev\"",
     "deploy:rules": "firebase deploy --only firestore:rules,storage:rules",

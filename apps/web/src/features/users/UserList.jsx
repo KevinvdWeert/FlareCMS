@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ShieldCheck, ScrollText, PenTool, Users } from 'lucide-react';
 import { fetchUsers } from '../../lib/firestore';
 import { callSetUserRole } from '../../lib/functions';
 import { useAuth } from '../auth/useAuth';
@@ -73,10 +74,42 @@ export const UserList = () => {
   };
 
   // Derived stats
-  const adminCount = users.filter((u) => u.role === 'admin').length;
-  const editorCount = users.filter((u) => u.role === 'editor').length;
-  const writerCount = users.filter((u) => u.role === 'writer' || u.role === 'user').length;
-  const pendingCount = users.filter((u) => u.status === 'pending').length;
+  const normalizedRole = (u) => String(u.role || 'user').toLowerCase();
+  const adminCount = users.filter((u) => normalizedRole(u) === 'admin').length;
+  const editorCount = users.filter((u) => normalizedRole(u) === 'editor').length;
+  const writerCount = users.filter((u) => normalizedRole(u) === 'writer').length;
+  const userCount = users.filter((u) => normalizedRole(u) === 'user').length;
+  const currentUserRole = users.find((u) => u.id === currentUser?.uid)?.role || 'user';
+  const roleCardClass = (role) => {
+    const normalized = String(role || 'user').toLowerCase();
+    if (normalized === 'admin') return ' is-bronze';
+    if (normalized === 'editor') return ' is-slate';
+    if (normalized === 'writer') return ' is-outline';
+    return '';
+  };
+
+  const roleDefinitions = [
+    { role: 'user', description: 'Read content and basic navigation access.' },
+    { role: 'writer', description: 'Create and edit drafts, then submit for review.' },
+    { role: 'editor', description: 'Publish content and manage editorial workflow.' },
+    { role: 'admin', description: 'Global permissions, users, roles, and settings.' },
+  ];
+
+  const rolesFromUsers = Array.from(new Set(users.map((u) => normalizedRole(u)))).filter(Boolean);
+  const missingRoles = rolesFromUsers.filter((role) => !roleDefinitions.some((d) => d.role === role));
+  const roleCards = [
+    ...roleDefinitions,
+    ...missingRoles.map((role) => ({
+      role,
+      description: 'Custom role detected from your user list permissions.',
+    })),
+  ];
+
+  const pointToneClass = (index) => {
+    if (index % 3 === 0) return 'is-bronze';
+    if (index % 3 === 1) return 'is-slate';
+    return 'is-outline';
+  };
 
   // Filtered list
   const filteredUsers = users.filter((u) => {
@@ -108,24 +141,24 @@ export const UserList = () => {
       {/* Stats Bento Grid */}
       <div className="admin-stats-grid">
         <div className="admin-stat-card">
-          <span className="material-symbols-outlined admin-stat-icon">shield_person</span>
-          <p className="admin-stat-label">Admins</p>
+          <ShieldCheck className="admin-stat-icon" size={20} strokeWidth={1.9} aria-hidden="true" />
+          <p className="admin-stat-label">Administrators</p>
           <strong className="admin-stat-value">{loading ? '—' : adminCount}</strong>
         </div>
         <div className="admin-stat-card">
-          <span className="material-symbols-outlined admin-stat-icon">history_edu</span>
+          <ScrollText className="admin-stat-icon" size={20} strokeWidth={1.9} aria-hidden="true" />
           <p className="admin-stat-label">Editors</p>
           <strong className="admin-stat-value">{loading ? '—' : editorCount}</strong>
         </div>
         <div className="admin-stat-card">
-          <span className="material-symbols-outlined admin-stat-icon">ink_pen</span>
+          <PenTool className="admin-stat-icon" size={20} strokeWidth={1.9} aria-hidden="true" />
           <p className="admin-stat-label">Writers</p>
           <strong className="admin-stat-value">{loading ? '—' : writerCount}</strong>
         </div>
         <div className="admin-stat-card">
-          <span className="material-symbols-outlined admin-stat-icon">group_add</span>
-          <p className="admin-stat-label">Pending</p>
-          <strong className="admin-stat-value">{loading ? '—' : pendingCount}</strong>
+          <Users className="admin-stat-icon" size={20} strokeWidth={1.9} aria-hidden="true" />
+          <p className="admin-stat-label">Members</p>
+          <strong className="admin-stat-value">{loading ? '—' : userCount}</strong>
         </div>
       </div>
 
@@ -215,6 +248,53 @@ export const UserList = () => {
           </table>
         </div>
       )}
+
+      <section className="user-role-framework">
+        <div className="user-role-framework-copy">
+          <h3>Role Framework</h3>
+          <p>
+            Define the boundaries of creation. Our modular role system allows you to construct
+            custom access layers that evolve with your publication.
+          </p>
+          <div className="user-role-framework-points">
+            {roleCards.map((item, index) => {
+              const roleCount = users.filter((u) => normalizedRole(u) === item.role).length;
+              const roleLabel = item.role.charAt(0).toUpperCase() + item.role.slice(1);
+              return (
+                <div key={`point-${item.role}`} className="user-role-framework-point">
+                  <i className={pointToneClass(index)} aria-hidden="true" />
+                  <div>
+                    <strong>{roleLabel} Access</strong>
+                    <span>
+                      {item.description} {`(${roleCount} ${roleCount === 1 ? 'user' : 'users'})`}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="user-role-framework-cards">
+          {roleCards.map((item, index) => {
+            const roleCount = users.filter((u) => normalizedRole(u) === item.role).length;
+            const roleLabel = item.role.charAt(0).toUpperCase() + item.role.slice(1);
+            return (
+              <article
+                key={item.role}
+                className={`user-role-card${roleCardClass(item.role)}${currentUserRole === item.role ? ' is-current' : ''}`}
+              >
+                <small>{String(index + 1).padStart(2, '0')}</small>
+                <strong>{roleLabel}</strong>
+                <span>
+                  {item.description} {`(${roleCount} ${roleCount === 1 ? 'user' : 'users'})`}
+                  {currentUserRole === item.role ? ' • Your role' : ''}
+                </span>
+              </article>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 };
