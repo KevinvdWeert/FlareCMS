@@ -12,7 +12,8 @@ import {
   Settings,
   LayoutDashboard,
   PenSquare,
-  Images
+  Images,
+  Sliders,
 } from 'lucide-react';
 
 export const AdminLayout = () => {
@@ -51,6 +52,11 @@ export const AdminLayout = () => {
           <NavLink to="/admin/media" className={({ isActive }) => `admin-nav-link ${isActive ? 'is-active' : ''}`}>
             <Images size={18} />
             <span>MediaManager</span>
+          </NavLink>
+
+          <NavLink to="/admin/settings" className={({ isActive }) => `admin-nav-link ${isActive ? 'is-active' : ''}`}>
+            <Sliders size={18} />
+            <span>Settings</span>
           </NavLink>
 
           {isAdmin && (

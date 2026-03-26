@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { getPages, getGeneralSettings, getHomepagePage } from '../../lib/firestore';
+import { getPages, getGeneralSettings, getHomepagePage, getSettings } from '../../lib/firestore';
 import { Link } from 'react-router-dom';
 import { useImageUrl } from '../../hooks/useImageUrl';
 
 export const PublicHome = () => {
   const [pages, setPages] = useState([]);
   const [frontPage, setFrontPage] = useState(null);
+  const [footerSettings, setFooterSettings] = useState(null);
+  const [headerSettings, setHeaderSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
@@ -14,11 +16,13 @@ export const PublicHome = () => {
       setLoading(true);
       setLoadError('');
       try {
-        const [data, homepage, settings] = await Promise.race([
+        const [data, homepage, settings, footerData, headerData] = await Promise.race([
           Promise.all([
             getPages(true),
             getHomepagePage(),
             getGeneralSettings(),
+            getSettings('footer'),
+            getSettings('header'),
           ]),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Request timed out while loading pages.')), 5000)
@@ -37,6 +41,8 @@ export const PublicHome = () => {
 
         setFrontPage(fp);
         setPages(fp ? allPages.filter((p) => p.id !== fp.id) : allPages);
+        setFooterSettings(footerData);
+        setHeaderSettings(headerData);
       } catch (error) {
         console.error('Failed to load published pages:', error);
         setPages([]);
@@ -61,7 +67,12 @@ export const PublicHome = () => {
     <div className="site-layout">
       <header className="site-header">
         <div className="header-content">
-          <Link to="/" className="site-logo">FlareCMS</Link>
+          <Link to="/" className="site-logo">{headerSettings?.logoText || 'FlareCMS'}</Link>
+          {headerSettings?.navItems?.filter((n) => n.visible !== false).map((item, i) =>
+            item.isExternal
+              ? <a key={i} href={item.href} target="_blank" rel="noopener noreferrer" className="pub-nav-link">{item.label}</a>
+              : <Link key={i} to={item.href} className="pub-nav-link">{item.label}</Link>
+          )}
           <Link to="/admin/login" className="pub-admin-link">Admin</Link>
         </div>
       </header>
@@ -162,7 +173,15 @@ export const PublicHome = () => {
       </main>
 
       <footer className="site-footer">
-        <p>&copy; {new Date().getFullYear()} FlareCMS. Built with passion.</p>
+        {footerSettings?.footerText && <p className="footer-tagline">{footerSettings.footerText}</p>}
+        <p>{footerSettings?.copyrightLine || `© ${new Date().getFullYear()} FlareCMS. Built with passion.`}</p>
+        {footerSettings?.legalLinks?.length > 0 && (
+          <nav className="footer-legal-links">
+            {footerSettings.legalLinks.map((link, i) => (
+              <a key={i} href={link.url}>{link.label}</a>
+            ))}
+          </nav>
+        )}
       </footer>
     </div>
   );

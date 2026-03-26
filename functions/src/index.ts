@@ -46,3 +46,11 @@ export {
   getRecentActivity,
   getTrafficSummary,
 } from "./dashboard";
+
+// Settings callables
+export {
+  saveGlobalSettings,
+  restoreSettingsVersion,
+  getSettingsHistory,
+  publishStagingSettings,
+} from "./settings";
