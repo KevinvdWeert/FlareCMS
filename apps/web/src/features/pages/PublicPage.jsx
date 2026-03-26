@@ -75,7 +75,7 @@ export const PublicPage = () => {
           {footerSettings?.legalLinks?.length > 0 && (
             <nav className="footer-legal-links">
               {footerSettings.legalLinks.map((link, i) => (
-                <a key={i} href={link.url}>{link.label}</a>
+                <a key={link.url || i} href={link.url}>{link.label}</a>
               ))}
             </nav>
           )}
@@ -95,8 +95,8 @@ export const PublicPage = () => {
           <Link to="/" className="site-logo">{headerSettings?.logoText || 'FlareCMS'}</Link>
           {headerSettings?.navItems?.filter((n) => n.visible !== false).map((item, i) =>
             item.isExternal
-              ? <a key={i} href={item.href} target="_blank" rel="noopener noreferrer" className="pub-nav-link">{item.label}</a>
-              : <Link key={i} to={item.href} className="pub-nav-link">{item.label}</Link>
+              ? <a key={item.href || i} href={item.href} target="_blank" rel="noopener noreferrer" className="pub-nav-link">{item.label}</a>
+              : <Link key={item.href || i} to={item.href} className="pub-nav-link">{item.label}</Link>
           )}
         </div>
       </header>
@@ -127,7 +127,7 @@ export const PublicPage = () => {
         {footerSettings?.legalLinks?.length > 0 && (
           <nav className="footer-legal-links">
             {footerSettings.legalLinks.map((link, i) => (
-              <a key={i} href={link.url}>{link.label}</a>
+              <a key={link.url || i} href={link.url}>{link.label}</a>
             ))}
           </nav>
         )}

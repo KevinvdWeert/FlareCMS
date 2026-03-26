@@ -6,7 +6,7 @@ import { writeActivityLog, requireStaff } from "./lib/db";
 
 const db = admin.firestore();
 
-const VALID_SETTING_TYPES = ["footer", "header", "homepage", "identity", "snippets", "seo", "contact"] as const;
+const VALID_SETTING_TYPES = ["footer", "header", "homepage", "identity", "snippets", "seo", "contact", "media-credits"] as const;
 type SettingType = (typeof VALID_SETTING_TYPES)[number];
 
 function isValidSettingType(value: unknown): value is SettingType {

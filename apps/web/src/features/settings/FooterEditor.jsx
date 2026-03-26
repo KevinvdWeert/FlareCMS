@@ -225,7 +225,7 @@ export const FooterEditor = () => {
             {settings.legalLinks?.length > 0 && (
               <nav className="footer-legal-links">
                 {settings.legalLinks.map((link, i) => (
-                  <a key={i} href={link.url || '#'}>{link.label || 'Link'}</a>
+                  <a key={link.url || i} href={link.url || '#'}>{link.label || 'Link'}</a>
                 ))}
               </nav>
             )}
