@@ -2,6 +2,14 @@ const DEFAULT_TITLE = 'FlareCMS';
 const DEFAULT_DESCRIPTION =
   'FlareCMS is a fast, modern editorial CMS powered by React and Firebase.';
 
+const resolveAbsoluteUrl = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw || typeof window === 'undefined') return raw;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (raw.startsWith('/')) return `${window.location.origin}${raw}`;
+  return raw;
+};
+
 const upsertMetaTag = ({ selector, attr, value, content }) => {
   if (typeof document === 'undefined') return;
 
@@ -14,11 +22,13 @@ const upsertMetaTag = ({ selector, attr, value, content }) => {
   tag.setAttribute('content', content || '');
 };
 
-export const applySeo = ({ title, description, type = 'article' } = {}) => {
+export const applySeo = ({ title, description, type = 'article', ogImage, faviconUrl } = {}) => {
   if (typeof document === 'undefined') return;
 
   const resolvedTitle = String(title || '').trim() || DEFAULT_TITLE;
   const resolvedDescription = String(description || '').trim() || DEFAULT_DESCRIPTION;
+  const resolvedOgImage = resolveAbsoluteUrl(ogImage || '');
+  const resolvedFavicon = resolveAbsoluteUrl(faviconUrl || '');
 
   document.title = resolvedTitle;
 
@@ -70,6 +80,32 @@ export const applySeo = ({ title, description, type = 'article' } = {}) => {
     value: 'twitter:description',
     content: resolvedDescription,
   });
+
+  if (resolvedOgImage) {
+    upsertMetaTag({
+      selector: 'meta[property="og:image"]',
+      attr: 'property',
+      value: 'og:image',
+      content: resolvedOgImage,
+    });
+
+    upsertMetaTag({
+      selector: 'meta[name="twitter:image"]',
+      attr: 'name',
+      value: 'twitter:image',
+      content: resolvedOgImage,
+    });
+  }
+
+  if (resolvedFavicon) {
+    let icon = document.head.querySelector('link[rel="icon"]');
+    if (!icon) {
+      icon = document.createElement('link');
+      icon.setAttribute('rel', 'icon');
+      document.head.appendChild(icon);
+    }
+    icon.setAttribute('href', resolvedFavicon);
+  }
 };
 
 export const fallbackDescriptionFromBlocks = (blocks = []) => {

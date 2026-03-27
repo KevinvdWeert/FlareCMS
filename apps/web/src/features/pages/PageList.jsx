@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { getPagesPaginated, deletePage, getGeneralSettings } from '../../lib/firestore';
 import { callSetFrontPage } from '../../lib/functions';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Edit, Trash, Plus, FileStack, Home } from 'lucide-react';
 import { useAuth } from '../auth/useAuth';
 
 export const PageList = () => {
   const { isAdmin } = useAuth();
+  const [searchParams] = useSearchParams();
   const [pages, setPages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -16,6 +17,16 @@ export const PageList = () => {
   const [frontPageId, setFrontPageId] = useState(null);
   const [settingFrontPage, setSettingFrontPage] = useState('');
   const PAGE_SIZE = 10;
+  const searchQuery = (searchParams.get('q') || '').trim().toLowerCase();
+
+  const filteredPages = pages.filter((page) => {
+    if (!searchQuery) return true;
+    return (
+      String(page.title || '').toLowerCase().includes(searchQuery) ||
+      String(page.slug || '').toLowerCase().includes(searchQuery) ||
+      String(page.status || '').toLowerCase().includes(searchQuery)
+    );
+  });
 
   const publishedCount = pages.filter((p) => p.status === 'published').length;
   const draftCount = pages.filter((p) => p.status !== 'published').length;
@@ -96,6 +107,9 @@ export const PageList = () => {
           <Plus size={18} />
           <span>Create Page</span>
         </Link>
+        {searchQuery && (
+          <p className="admin-muted-text">Showing matches for: {searchParams.get('q')}</p>
+        )}
       </div>
 
       <section className="editorial-cards-grid">
@@ -133,7 +147,7 @@ export const PageList = () => {
             </tr>
           </thead>
           <tbody>
-            {pages.map((page) => (
+            {filteredPages.map((page) => (
               <tr key={page.id}>
                 <td>
                   <span className="page-list-title">
@@ -173,9 +187,11 @@ export const PageList = () => {
                 </td>
               </tr>
             ))}
-            {pages.length === 0 && (
+            {filteredPages.length === 0 && (
               <tr>
-                <td colSpan="4" className="admin-empty-row">No pages found. Create one to get started.</td>
+                <td colSpan="4" className="admin-empty-row">
+                  {searchQuery ? 'No pages matched your search.' : 'No pages found. Create one to get started.'}
+                </td>
               </tr>
             )}
           </tbody>

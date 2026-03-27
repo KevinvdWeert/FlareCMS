@@ -10,7 +10,9 @@ export const PublicPage = () => {
   const { slug } = useParams();
   const [page, setPage] = useState(null);
   const [footerSettings, setFooterSettings] = useState(null);
+  const [contactSettings, setContactSettings] = useState(null);
   const [headerSettings, setHeaderSettings] = useState(null);
+  const [identitySettings, setIdentitySettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
@@ -19,11 +21,13 @@ export const PublicPage = () => {
       setLoading(true);
       setLoadError('');
       try {
-        const [data, footerData, headerData] = await Promise.race([
+        const [data, footerData, headerData, identityData, contactData] = await Promise.race([
           Promise.all([
             getPageBySlug(slug),
             getSettings('footer').catch(() => null),
             getSettings('header').catch(() => null),
+            getSettings('identity').catch(() => null),
+            getSettings('contact').catch(() => null),
           ]),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Request timed out while loading page.')), 5000)
@@ -32,9 +36,13 @@ export const PublicPage = () => {
         setPage(data);
         setFooterSettings(footerData);
         setHeaderSettings(headerData);
+        setIdentitySettings(identityData);
+        setContactSettings(contactData);
       } catch (error) {
         console.error('Failed to load page:', error);
         setPage(null);
+        setContactSettings(null);
+        setIdentitySettings(null);
         setLoadError('This page is taking too long to load.');
       } finally {
         setLoading(false);
@@ -58,11 +66,18 @@ export const PublicPage = () => {
   useEffect(() => {
     if (loading) return;
 
+    const siteTitle = identitySettings?.siteTitle?.trim() || 'FlareCMS';
+    const defaultDescription = identitySettings?.defaultMetaDescription?.trim() || 'The requested page could not be found.';
+    const defaultOgImage = identitySettings?.defaultOgImagePath?.trim() || '';
+    const faviconUrl = identitySettings?.faviconUrl?.trim() || '';
+
     if (!page) {
       applySeo({
-        title: 'Page Not Found | FlareCMS',
-        description: 'The requested page could not be found.',
+        title: `Page Not Found | ${siteTitle}`,
+        description: defaultDescription,
         type: 'website',
+        ogImage: defaultOgImage,
+        faviconUrl,
       });
       return;
     }
@@ -71,11 +86,13 @@ export const PublicPage = () => {
     const metaDescription = page?.seoMetadata?.metaDescription?.trim();
 
     applySeo({
-      title: metaTitle || `${page.title} | FlareCMS`,
-      description: metaDescription || fallbackDescriptionFromBlocks(page.blocks),
+      title: metaTitle || `${page.title} | ${siteTitle}`,
+      description: metaDescription || fallbackDescriptionFromBlocks(page.blocks) || defaultDescription,
       type: 'article',
+      ogImage: defaultOgImage,
+      faviconUrl,
     });
-  }, [loading, page]);
+  }, [loading, page, identitySettings]);
 
   if (loading) {
     return (
@@ -90,7 +107,7 @@ export const PublicPage = () => {
       <div className="site-layout">
         <header className="site-header">
           <div className="header-content narrow-header">
-            <Link to="/" className="site-logo">{headerSettings?.logoText || 'FlareCMS'}</Link>
+            <Link to="/" className="site-logo">{headerSettings?.logoText || identitySettings?.siteTitle || 'FlareCMS'}</Link>
           </div>
         </header>
         <main className="not-found">
@@ -100,7 +117,27 @@ export const PublicPage = () => {
         </main>
         <footer className="site-footer">
           <div className="site-footer-surface">
-            <div className="site-footer-brand">{headerSettings?.logoText || 'Cuvée Slate'}</div>
+            <div className="site-footer-brand">{headerSettings?.logoText || identitySettings?.siteTitle || 'Cuvée Slate'}</div>
+
+            {(contactSettings?.organizationName || contactSettings?.email || contactSettings?.phone || contactSettings?.officeHours || contactSettings?.address || contactSettings?.mapUrl) && (
+              <div className="footer-contact-meta">
+                {contactSettings?.organizationName && <p>{contactSettings.organizationName}</p>}
+                {(contactSettings?.email || contactSettings?.phone) && (
+                  <p>
+                    {contactSettings?.email && <a href={`mailto:${contactSettings.email}`}>{contactSettings.email}</a>}
+                    {contactSettings?.email && contactSettings?.phone ? ' · ' : ''}
+                    {contactSettings?.phone && <a href={`tel:${contactSettings.phone}`}>{contactSettings.phone}</a>}
+                  </p>
+                )}
+                {contactSettings?.officeHours && <p>{contactSettings.officeHours}</p>}
+                {contactSettings?.address && <p>{contactSettings.address}</p>}
+                {contactSettings?.mapUrl && (
+                  <p>
+                    <a href={contactSettings.mapUrl} target="_blank" rel="noopener noreferrer">View map</a>
+                  </p>
+                )}
+              </div>
+            )}
 
             {footerSettings?.footerText && <p className="footer-tagline">{footerSettings.footerText}</p>}
 
@@ -144,7 +181,7 @@ export const PublicPage = () => {
     <div className="site-layout">
       <header className="site-header">
         <div className="header-content narrow-header">
-          <Link to="/" className="site-logo">{headerSettings?.logoText || 'FlareCMS'}</Link>
+          <Link to="/" className="site-logo">{headerSettings?.logoText || identitySettings?.siteTitle || 'FlareCMS'}</Link>
           {headerSettings?.navItems?.filter((n) => n.visible !== false).map((item, i) =>
             item.isExternal
               ? <a key={item.href || i} href={item.href} target="_blank" rel="noopener noreferrer" className="pub-nav-link">{item.label}</a>
@@ -175,7 +212,27 @@ export const PublicPage = () => {
 
       <footer className="site-footer">
         <div className="site-footer-surface">
-          <div className="site-footer-brand">{headerSettings?.logoText || 'Cuvée Slate'}</div>
+          <div className="site-footer-brand">{headerSettings?.logoText || identitySettings?.siteTitle || 'Cuvée Slate'}</div>
+
+          {(contactSettings?.organizationName || contactSettings?.email || contactSettings?.phone || contactSettings?.officeHours || contactSettings?.address || contactSettings?.mapUrl) && (
+            <div className="footer-contact-meta">
+              {contactSettings?.organizationName && <p>{contactSettings.organizationName}</p>}
+              {(contactSettings?.email || contactSettings?.phone) && (
+                <p>
+                  {contactSettings?.email && <a href={`mailto:${contactSettings.email}`}>{contactSettings.email}</a>}
+                  {contactSettings?.email && contactSettings?.phone ? ' · ' : ''}
+                  {contactSettings?.phone && <a href={`tel:${contactSettings.phone}`}>{contactSettings.phone}</a>}
+                </p>
+              )}
+              {contactSettings?.officeHours && <p>{contactSettings.officeHours}</p>}
+              {contactSettings?.address && <p>{contactSettings.address}</p>}
+              {contactSettings?.mapUrl && (
+                <p>
+                  <a href={contactSettings.mapUrl} target="_blank" rel="noopener noreferrer">View map</a>
+                </p>
+              )}
+            </div>
+          )}
 
           {footerSettings?.footerText && <p className="footer-tagline">{footerSettings.footerText}</p>}
 

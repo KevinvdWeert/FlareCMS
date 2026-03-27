@@ -294,8 +294,8 @@ const directSaveGlobalSettings = async (settingType, settings, publishNow = true
       savedByEmail: user.email || null,
       isPublished: !!publishNow,
     });
-  } catch {
-    // Ignore history write failures in local bypass mode.
+  } catch (err) {
+    console.warn('Unable to write settings history in local bypass mode:', err?.message || err);
   }
 
   return { success: true, ...(stagingToken ? { stagingToken } : {}) };

@@ -125,9 +125,21 @@ service cloud.firestore {
     // ---------------------------------------------------------------------------
     match /settings/{settingId} {
       // Public site needs selected settings documents for rendering.
-      allow read: if settingId in ['general', 'header', 'footer'] || isAdmin();
+      allow read: if settingId in ['general', 'header', 'footer', 'homepage', 'identity', 'contact'] || isAdmin();
       // Only admins (via Cloud Functions) may write settings.
       allow write: if isAdmin();
+    }
+
+    // ---------------------------------------------------------------------------
+    // Settings History Collection
+    // ---------------------------------------------------------------------------
+    match /settingsHistory/{settingType}/versions/{versionId} {
+      // Editors/admins can read version history in admin settings pages.
+      allow read: if isStaff();
+      // Admin can create history entries for local bypass mode.
+      allow create: if isAdmin();
+      // History entries are immutable.
+      allow update, delete: if false;
     }
   }
 }
