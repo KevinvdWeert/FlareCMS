@@ -75,32 +75,32 @@ export const LinkChecker = () => {
   };
 
   return (
-    <div>
+    <div className="settings-page-shell">
       <div className="admin-section-header">
-        <h1>Link Checker</h1>
-        <button className="admin-button-secondary" onClick={scan} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <RefreshCw size={15} className={loading ? 'spin' : ''} />
-          {loading ? 'Scanning…' : 'Refresh'}
-        </button>
+        <div className="settings-page-header-main">
+          <div className="settings-page-kicker">Settings • Link Checker</div>
+          <h1 className="settings-page-title">Link Checker Settings</h1>
+          <p className="settings-page-description">
+            Customize link quality oversight. Monitor malformed destinations and outbound integrity
+            across all published editorial pages.
+          </p>
+        </div>
+        <div className="settings-page-header-actions">
+          <button className="admin-button-secondary settings-row" onClick={scan} disabled={loading}>
+            <RefreshCw size={15} className={loading ? 'spin' : ''} />
+            {loading ? 'Scanning…' : 'Refresh'}
+          </button>
+        </div>
       </div>
 
       <div className="settings-card">
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div className="link-checker-filters">
           {Object.entries(counts).map(([key, count]) => (
             <button
               key={key}
               type="button"
               onClick={() => setFilter(key)}
-              style={{
-                border: `1px solid ${filter === key ? '#0ea5e9' : '#e2e8f0'}`,
-                background: filter === key ? 'rgba(14,165,233,0.08)' : '#fff',
-                borderRadius: 8,
-                padding: '6px 14px',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                color: filter === key ? '#0284c7' : '#475569',
-              }}
+              className={`link-checker-filter-btn${filter === key ? ' is-active' : ''}`}
             >
               {key.charAt(0).toUpperCase() + key.slice(1)} ({count})
             </button>
@@ -108,11 +108,11 @@ export const LinkChecker = () => {
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 40 }}>
+          <div className="link-checker-loading">
             <div className="spinner" />
           </div>
         ) : filtered.length === 0 ? (
-          <p style={{ fontSize: '0.84rem', color: '#94a3b8', textAlign: 'center', padding: 32 }}>
+          <p className="link-checker-empty">
             No links found matching this filter.
           </p>
         ) : (
@@ -132,11 +132,11 @@ export const LinkChecker = () => {
                     <td style={{ fontSize: '0.84rem' }}>
                       <span style={{ fontWeight: 600 }}>{link.pageTitle}</span>
                       <br />
-                      <span style={{ color: '#94a3b8', fontSize: '0.76rem' }}>/{link.pageSlug}</span>
+                      <span className="link-checker-page-slug">/{link.pageSlug}</span>
                     </td>
-                    <td style={{ fontSize: '0.84rem', color: '#475569' }}>{link.linkText || <em style={{ color: '#94a3b8' }}>no text</em>}</td>
+                    <td style={{ fontSize: '0.84rem', color: '#50453b' }}>{link.linkText || <em className="link-checker-no-text">no text</em>}</td>
                     <td>
-                      <span className="link-checker-url">{link.url || <em style={{ color: '#94a3b8' }}>empty</em>}</span>
+                      <span className="link-checker-url">{link.url || <em className="link-checker-empty-inline">empty</em>}</span>
                     </td>
                     <td><StatusBadge url={link.url} /></td>
                   </tr>

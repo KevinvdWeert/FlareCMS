@@ -82,10 +82,19 @@ export const ContactEditor = () => {
   if (loading) return <div className="admin-section"><div className="spinner" /></div>;
 
   return (
-    <div>
+    <div className="settings-page-shell">
       <div className="admin-section-header">
-        <h1>Contact &amp; Organization Info</h1>
-        {isEditor && <span className="settings-role-notice">👁 Editor Preview</span>}
+        <div className="settings-page-header-main">
+          <div className="settings-page-kicker">Settings • Contact</div>
+          <h1 className="settings-page-title">Contact Settings</h1>
+          <p className="settings-page-description">
+            Customize your organization&apos;s footprint. Manage contact channels, office details, and
+            public location information across all editorial pages.
+          </p>
+        </div>
+        <div className="settings-page-header-actions">
+          {isEditor && <span className="settings-role-notice">Editor Preview</span>}
+        </div>
       </div>
 
       {stagingData?._staging && (
@@ -145,7 +154,7 @@ export const ContactEditor = () => {
         </div>
       )}
 
-      <div className="settings-card" style={{ marginTop: 20 }}>
+      <div className="settings-card settings-history-card">
         <h2>Version History</h2>
         <div className="settings-version-list">
           {history.map((v) => (
@@ -155,15 +164,14 @@ export const ContactEditor = () => {
                 {' · '}
                 {parseFirestoreTimestamp(v.savedAt).toLocaleString()}
                 {v.isPublished && (
-                  <span className="admin-badge" style={{ marginLeft: 8, background: '#dcfce7', color: '#166534' }}>
+                  <span className="admin-badge settings-published-badge">
                     Published
                   </span>
                 )}
               </div>
               {isAdmin && (
                 <button
-                  className="admin-button-secondary"
-                  style={{ padding: '4px 10px', fontSize: '0.8rem' }}
+                  className="admin-button-secondary settings-restore-btn"
                   onClick={() => handleRestore(v.id)}
                   disabled={saving}
                 >
@@ -173,7 +181,7 @@ export const ContactEditor = () => {
             </div>
           ))}
           {history.length === 0 && (
-            <p style={{ fontSize: '0.84rem', color: '#94a3b8' }}>No saved versions yet.</p>
+            <p className="settings-history-empty">No saved versions yet.</p>
           )}
         </div>
       </div>

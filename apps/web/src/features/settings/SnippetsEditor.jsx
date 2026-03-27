@@ -96,10 +96,19 @@ export const SnippetsEditor = () => {
   if (loading) return <div className="admin-section"><div className="spinner" /></div>;
 
   return (
-    <div>
+    <div className="settings-page-shell">
       <div className="admin-section-header">
-        <h1>Content Snippets</h1>
-        {isEditor && <span className="settings-role-notice">👁 Editor Preview</span>}
+        <div className="settings-page-header-main">
+          <div className="settings-page-kicker">Settings • Snippets</div>
+          <h1 className="settings-page-title">Snippets Settings</h1>
+          <p className="settings-page-description">
+            Customize reusable messaging. Manage announcement content, promo strips, and shared
+            editorial snippets across all public pages.
+          </p>
+        </div>
+        <div className="settings-page-header-actions">
+          {isEditor && <span className="settings-role-notice">Editor Preview</span>}
+        </div>
       </div>
 
       {stagingData?._staging && (
@@ -118,20 +127,20 @@ export const SnippetsEditor = () => {
 
       <div className="settings-card">
         <h2>Snippets</h2>
-        <p style={{ fontSize: '0.84rem', color: '#64748b', marginBottom: 16 }}>
+        <p className="settings-muted-note">
           Manage reusable content snippets like announcement bars, promo strips, and disclaimers.
         </p>
 
         {snippets.map((snippet, i) => (
-          <div key={snippet.id} style={{ padding: '14px', border: '1px solid #e2e8f0', borderRadius: 10, background: '#f8fafc', marginBottom: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div key={snippet.id} className="settings-item-card">
+            <div className="settings-item-head">
+              <div className="settings-row">
                 <Toggle
                   checked={snippet.enabled}
                   onChange={(val) => updateSnippet(i, 'enabled', val)}
                   disabled={!isAdmin}
                 />
-                <span style={{ fontSize: '0.82rem', fontWeight: 600, color: snippet.enabled ? '#0f172a' : '#94a3b8' }}>
+                <span className="settings-checkbox-note" style={{ color: snippet.enabled ? '#1b1c15' : '#82756a', fontWeight: 600 }}>
                   {snippet.enabled ? 'Enabled' : 'Disabled'}
                 </span>
               </div>
@@ -146,7 +155,7 @@ export const SnippetsEditor = () => {
               )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+            <div className="settings-two-col" style={{ marginBottom: 8 }}>
               <div className="settings-field" style={{ margin: 0 }}>
                 <label className="settings-label">Title</label>
                 <input
@@ -164,7 +173,6 @@ export const SnippetsEditor = () => {
                   value={snippet.type}
                   onChange={(e) => updateSnippet(i, 'type', e.target.value)}
                   disabled={!isAdmin}
-                  style={{ width: '100%' }}
                 >
                   {SNIPPET_TYPES.map((t) => (
                     <option key={t} value={t}>{t}</option>
@@ -209,7 +217,7 @@ export const SnippetsEditor = () => {
         </div>
       )}
 
-      <div className="settings-card" style={{ marginTop: 20 }}>
+      <div className="settings-card settings-history-card">
         <h2>Version History</h2>
         <div className="settings-version-list">
           {history.map((v) => (
@@ -219,15 +227,14 @@ export const SnippetsEditor = () => {
                 {' · '}
                 {parseFirestoreTimestamp(v.savedAt).toLocaleString()}
                 {v.isPublished && (
-                  <span className="admin-badge" style={{ marginLeft: 8, background: '#dcfce7', color: '#166534' }}>
+                  <span className="admin-badge settings-published-badge">
                     Published
                   </span>
                 )}
               </div>
               {isAdmin && (
                 <button
-                  className="admin-button-secondary"
-                  style={{ padding: '4px 10px', fontSize: '0.8rem' }}
+                  className="admin-button-secondary settings-restore-btn"
                   onClick={() => handleRestore(v.id)}
                   disabled={saving}
                 >
@@ -237,7 +244,7 @@ export const SnippetsEditor = () => {
             </div>
           ))}
           {history.length === 0 && (
-            <p style={{ fontSize: '0.84rem', color: '#94a3b8' }}>No saved versions yet.</p>
+            <p className="settings-history-empty">No saved versions yet.</p>
           )}
         </div>
       </div>

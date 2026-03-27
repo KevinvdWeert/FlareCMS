@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { getPages, getGeneralSettings, getHomepagePage, getSettings } from '../../lib/firestore';
+import { getGeneralSettings, getHomepagePage, getPageById, getSettings } from '../../lib/firestore';
 import { Link } from 'react-router-dom';
+import { Share2 } from 'lucide-react';
 import { useImageUrl } from '../../hooks/useImageUrl';
 import { BlockRenderer } from '../blocks/BlockRenderer';
 import { applySeo, fallbackDescriptionFromBlocks } from '../../lib/seo';
 
 export const PublicHome = () => {
-  const [pages, setPages] = useState([]);
   const [frontPage, setFrontPage] = useState(null);
   const [footerSettings, setFooterSettings] = useState(null);
   const [headerSettings, setHeaderSettings] = useState(null);
@@ -25,41 +25,39 @@ export const PublicHome = () => {
     frontPage?.title ||
     'Featured image';
 
+  const visibleNavItems = (headerSettings?.navItems || []).filter((item) => item?.visible !== false);
+
   useEffect(() => {
     const fetchPublishedPages = async () => {
       setLoading(true);
       setLoadError('');
       try {
-        const [data, homepage, settings, footerData, headerData] = await Promise.race([
+        const [homepage, settings, footerRes, headerRes] = await Promise.race([
           Promise.all([
-            getPages(true),
             getHomepagePage(),
             getGeneralSettings(),
-            getSettings('footer'),
-            getSettings('header'),
+            getSettings('footer').catch(() => null),
+            getSettings('header').catch(() => null),
           ]),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Request timed out while loading pages.')), 5000)
           )
         ]);
-        const allPages = Array.isArray(data) ? data : [];
-
         // Prefer the page with isHomepage === true; fall back to settings.frontPageId.
         let fp = homepage;
         if (!fp) {
           const fpId = settings?.frontPageId ?? null;
           if (fpId) {
-            fp = allPages.find((p) => p.id === fpId) || null;
+            const byId = await getPageById(fpId).catch(() => null);
+            fp = byId?.status === 'published' ? byId : null;
           }
         }
 
         setFrontPage(fp);
-        setPages(fp ? allPages.filter((p) => p.id !== fp.id) : allPages);
-        setFooterSettings(footerData);
-        setHeaderSettings(headerData);
+        setFooterSettings(footerRes);
+        setHeaderSettings(headerRes);
       } catch (error) {
         console.error('Failed to load published pages:', error);
-        setPages([]);
         setFrontPage(null);
         setLoadError('Loading content is taking too long. Please refresh to retry.');
       } finally {
@@ -102,7 +100,24 @@ export const PublicHome = () => {
     <div className="site-layout">
       <header className="site-header">
         <div className="header-content">
-          <Link to="/" className="site-logo">FlareCMS</Link>
+          <Link to="/" className="site-logo">{headerSettings?.logoText || 'FlareCMS'}</Link>
+          {visibleNavItems.map((item, i) =>
+            item?.isExternal ? (
+              <a
+                key={item.href || i}
+                href={item.href || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="pub-nav-link"
+              >
+                {item.label || 'Link'}
+              </a>
+            ) : (
+              <Link key={item.href || i} to={item.href || '/'} className="pub-nav-link">
+                {item.label || 'Link'}
+              </Link>
+            )
+          )}
         </div>
       </header>
 
@@ -144,44 +159,8 @@ export const PublicHome = () => {
           </div>
         )}
 
-        {/* ── Pages grid ───────────────────────────────────────── */}
-        {pages.length > 0 && (
-          <section className="pub-pages-section">
-            <h2 className="home-section-title">
-              {frontPage ? 'More Pages' : 'Latest'}
-            </h2>
-            <div className="page-grid">
-              {pages.map((page) => (
-                <Link to={`/${page.slug}`} key={page.id} className="page-card">
-                  <div className="card-image">
-                    {(page.featuredImagePath || page.featuredImage) ? (
-                      <CardImage
-                        imagePath={
-                          page.featuredImagePath ||
-                          page.featuredImage?.storagePath ||
-                          page.featuredImage?.path ||
-                          null
-                        }
-                        alt={page.featuredImage?.alt || page.featuredImageAlt || page.title}
-                      />
-                    ) : (
-                      <div className="placeholder-image" style={{ height: '100%' }}>
-                        <span>📄</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="card-content">
-                    <h3>{page.title}</h3>
-                    <p className="slug-text">/{page.slug}</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-
         {/* ── Empty state ──────────────────────────────────────── */}
-        {!loadError && pages.length === 0 && !frontPage && (
+        {!loadError && !frontPage && (
           <div className="empty-state">
             <p>No published pages yet. Check back soon!</p>
           </div>
@@ -189,31 +168,42 @@ export const PublicHome = () => {
       </main>
 
       <footer className="site-footer">
-        {footerSettings?.footerText && <p className="footer-tagline">{footerSettings.footerText}</p>}
-        <p>{footerSettings?.copyrightLine || `© ${new Date().getFullYear()} FlareCMS. Built with passion.`}</p>
-        {footerSettings?.legalLinks?.length > 0 && (
-          <nav className="footer-legal-links">
-            {footerSettings.legalLinks.map((link, i) => (
-              <a key={link.url || i} href={link.url}>{link.label}</a>
-            ))}
-          </nav>
-        )}
+        <div className="site-footer-surface">
+          <div className="site-footer-brand">{headerSettings?.logoText || 'Cuvée Slate'}</div>
+
+          {footerSettings?.footerText && <p className="footer-tagline">{footerSettings.footerText}</p>}
+
+          {footerSettings?.legalLinks?.length > 0 && (
+            <nav className="footer-legal-links">
+              {footerSettings.legalLinks.map((link, i) => (
+                <a key={link.url || i} href={link.url || '#'}>{link.label || 'Link'}</a>
+              ))}
+            </nav>
+          )}
+
+          {footerSettings?.socialLinks?.length > 0 && (
+            <div className="footer-social-links">
+              {footerSettings.socialLinks.slice(0, 3).map((item, i) => (
+                <a
+                  key={item.url || i}
+                  href={item.url || '#'}
+                  aria-label={item.label || 'Social link'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Share2 size={12} />
+                </a>
+              ))}
+            </div>
+          )}
+
+          <div className="footer-divider" />
+          <p className="footer-copy">
+            {footerSettings?.copyrightLine || `© ${new Date().getFullYear()} FlareCMS. Built with passion.`}
+          </p>
+        </div>
       </footer>
     </div>
   );
-};
-
-/** Card thumbnail image */
-const CardImage = ({ imagePath, alt }) => {
-  const { url, error } = useImageUrl(imagePath);
-  if (error) {
-    return (
-      <div className="placeholder-image" style={{ height: '100%' }}>
-        <span>🖼️</span>
-      </div>
-    );
-  }
-  if (!url) return <div className="loading-image" style={{ width: '100%', height: '100%' }} />;
-  return <img src={url} alt={alt || ''} />;
 };
 

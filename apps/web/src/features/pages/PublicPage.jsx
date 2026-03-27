@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { Share2 } from 'lucide-react';
 import { getPageBySlug, getSettings } from '../../lib/firestore';
 import { BlockRenderer } from '../blocks/BlockRenderer';
 import { useImageUrl } from '../../hooks/useImageUrl';
@@ -21,8 +22,8 @@ export const PublicPage = () => {
         const [data, footerData, headerData] = await Promise.race([
           Promise.all([
             getPageBySlug(slug),
-            getSettings('footer'),
-            getSettings('header'),
+            getSettings('footer').catch(() => null),
+            getSettings('header').catch(() => null),
           ]),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Request timed out while loading page.')), 5000)
@@ -98,15 +99,38 @@ export const PublicPage = () => {
           <Link to="/" className="btn-primary">← Go Home</Link>
         </main>
         <footer className="site-footer">
-          {footerSettings?.footerText && <p className="footer-tagline">{footerSettings.footerText}</p>}
-          <p>{footerSettings?.copyrightLine || `© ${new Date().getFullYear()} FlareCMS.`}</p>
-          {footerSettings?.legalLinks?.length > 0 && (
-            <nav className="footer-legal-links">
-              {footerSettings.legalLinks.map((link, i) => (
-                <a key={link.url || i} href={link.url}>{link.label}</a>
-              ))}
-            </nav>
-          )}
+          <div className="site-footer-surface">
+            <div className="site-footer-brand">{headerSettings?.logoText || 'Cuvée Slate'}</div>
+
+            {footerSettings?.footerText && <p className="footer-tagline">{footerSettings.footerText}</p>}
+
+            {footerSettings?.legalLinks?.length > 0 && (
+              <nav className="footer-legal-links">
+                {footerSettings.legalLinks.map((link, i) => (
+                  <a key={link.url || i} href={link.url || '#'}>{link.label || 'Link'}</a>
+                ))}
+              </nav>
+            )}
+
+            {footerSettings?.socialLinks?.length > 0 && (
+              <div className="footer-social-links">
+                {footerSettings.socialLinks.slice(0, 3).map((item, i) => (
+                  <a
+                    key={item.url || i}
+                    href={item.url || '#'}
+                    aria-label={item.label || 'Social link'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Share2 size={12} />
+                  </a>
+                ))}
+              </div>
+            )}
+
+            <div className="footer-divider" />
+            <p className="footer-copy">{footerSettings?.copyrightLine || `© ${new Date().getFullYear()} FlareCMS.`}</p>
+          </div>
         </footer>
       </div>
     );
@@ -150,15 +174,38 @@ export const PublicPage = () => {
       </article>
 
       <footer className="site-footer">
-        {footerSettings?.footerText && <p className="footer-tagline">{footerSettings.footerText}</p>}
-        <p>{footerSettings?.copyrightLine || `© ${new Date().getFullYear()} FlareCMS.`}</p>
-        {footerSettings?.legalLinks?.length > 0 && (
-          <nav className="footer-legal-links">
-            {footerSettings.legalLinks.map((link, i) => (
-              <a key={link.url || i} href={link.url}>{link.label}</a>
-            ))}
-          </nav>
-        )}
+        <div className="site-footer-surface">
+          <div className="site-footer-brand">{headerSettings?.logoText || 'Cuvée Slate'}</div>
+
+          {footerSettings?.footerText && <p className="footer-tagline">{footerSettings.footerText}</p>}
+
+          {footerSettings?.legalLinks?.length > 0 && (
+            <nav className="footer-legal-links">
+              {footerSettings.legalLinks.map((link, i) => (
+                <a key={link.url || i} href={link.url || '#'}>{link.label || 'Link'}</a>
+              ))}
+            </nav>
+          )}
+
+          {footerSettings?.socialLinks?.length > 0 && (
+            <div className="footer-social-links">
+              {footerSettings.socialLinks.slice(0, 3).map((item, i) => (
+                <a
+                  key={item.url || i}
+                  href={item.url || '#'}
+                  aria-label={item.label || 'Social link'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Share2 size={12} />
+                </a>
+              ))}
+            </div>
+          )}
+
+          <div className="footer-divider" />
+          <p className="footer-copy">{footerSettings?.copyrightLine || `© ${new Date().getFullYear()} FlareCMS.`}</p>
+        </div>
       </footer>
     </div>
   );

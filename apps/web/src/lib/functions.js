@@ -233,6 +233,142 @@ const directGetSyntheticRecentActivity = async ({ limit: limitCount = 10 } = {})
   return { entries: combined };
 };
 
+const directGetSettingsHistory = async (settingType, limitCount = 10) => {
+  const safeLimit = Math.min(Math.max(Number(limitCount) || 10, 1), 50);
+  try {
+    const snap = await getDocs(
+      query(
+        collection(db, 'settingsHistory', settingType, 'versions'),
+        orderBy('savedAt', 'desc'),
+        limit(safeLimit)
+      )
+    );
+
+    return {
+      versions: snap.docs.map((d) => ({ id: d.id, ...d.data() })),
+    };
+  } catch (err) {
+    const code = String(err?.code || '');
+    if (code.includes('permission-denied') || code.includes('failed-precondition')) {
+      return { versions: [] };
+    }
+    throw err;
+  }
+};
+
+const directSaveGlobalSettings = async (settingType, settings, publishNow = true) => {
+  const user = auth.currentUser;
+  if (!user?.uid) {
+    const err = new Error('Not authenticated');
+    err.code = 'auth/unauthenticated';
+    throw err;
+  }
+
+  let stagingToken;
+  const payload = {
+    ...(settings || {}),
+    _updatedAt: serverTimestamp(),
+    _updatedBy: user.uid,
+  };
+
+  if (publishNow) {
+    payload._staging = false;
+    payload._stagingToken = null;
+    payload._published = true;
+    payload._publishedAt = serverTimestamp();
+  } else {
+    stagingToken = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    payload._staging = true;
+    payload._stagingToken = stagingToken;
+    payload._published = false;
+  }
+
+  await setDoc(doc(db, 'settings', settingType), payload, { merge: true });
+
+  // Best effort history write. Some environments lock this collection to server-only writes.
+  try {
+    await addDoc(collection(db, 'settingsHistory', settingType, 'versions'), {
+      settings,
+      savedAt: serverTimestamp(),
+      savedBy: user.uid,
+      savedByEmail: user.email || null,
+      isPublished: !!publishNow,
+    });
+  } catch {
+    // Ignore history write failures in local bypass mode.
+  }
+
+  return { success: true, ...(stagingToken ? { stagingToken } : {}) };
+};
+
+const directRestoreSettingsVersion = async (settingType, versionId) => {
+  const user = auth.currentUser;
+  if (!user?.uid) {
+    const err = new Error('Not authenticated');
+    err.code = 'auth/unauthenticated';
+    throw err;
+  }
+
+  const versionRef = doc(db, 'settingsHistory', settingType, 'versions', versionId);
+  const versionSnap = await getDoc(versionRef);
+  if (!versionSnap.exists()) {
+    const err = new Error('Version not found or not accessible in local bypass mode.');
+    err.code = 'not-found';
+    throw err;
+  }
+
+  const versionData = versionSnap.data() || {};
+  const restoredSettings = versionData.settings || {};
+
+  await setDoc(doc(db, 'settings', settingType), {
+    ...restoredSettings,
+    _staging: false,
+    _stagingToken: null,
+    _published: true,
+    _publishedAt: serverTimestamp(),
+    _updatedAt: serverTimestamp(),
+    _updatedBy: user.uid,
+    _restoredFrom: versionId,
+  }, { merge: true });
+
+  return { success: true };
+};
+
+const directPublishStagingSettings = async (settingType, stagingToken) => {
+  const user = auth.currentUser;
+  if (!user?.uid) {
+    const err = new Error('Not authenticated');
+    err.code = 'auth/unauthenticated';
+    throw err;
+  }
+
+  const settingsRef = doc(db, 'settings', settingType);
+  const snap = await getDoc(settingsRef);
+  if (!snap.exists()) {
+    const err = new Error('Settings document not found.');
+    err.code = 'not-found';
+    throw err;
+  }
+
+  const current = snap.data() || {};
+  if (current._stagingToken !== stagingToken) {
+    const err = new Error('Staging token mismatch.');
+    err.code = 'permission-denied';
+    throw err;
+  }
+
+  await setDoc(settingsRef, {
+    _staging: false,
+    _stagingToken: null,
+    _published: true,
+    _publishedAt: serverTimestamp(),
+    _updatedAt: serverTimestamp(),
+    _updatedBy: user.uid,
+  }, { merge: true });
+
+  return { success: true };
+};
+
 const directListMediaAssets = async ({ pageSize = 20, startAfterId = null, mimeTypeFilter, ownerOnly = false } = {}) => {
   try {
     let q;
@@ -600,7 +736,9 @@ export const callGetTrafficSummary = () =>
  * @param {boolean} publishNow
  */
 export const callSaveGlobalSettings = (settingType, settings, publishNow = true) =>
-  httpsCallable(functions, 'saveGlobalSettings')({ settingType, settings, publishNow });
+  SHOULD_BYPASS_CALLABLES_LOCALLY
+    ? directSaveGlobalSettings(settingType, settings, publishNow).then((data) => ({ data }))
+    : httpsCallable(functions, 'saveGlobalSettings')({ settingType, settings, publishNow });
 
 /**
  * Restores a specific settings version. Admin only.
@@ -608,7 +746,9 @@ export const callSaveGlobalSettings = (settingType, settings, publishNow = true)
  * @param {string} versionId
  */
 export const callRestoreSettingsVersion = (settingType, versionId) =>
-  httpsCallable(functions, 'restoreSettingsVersion')({ settingType, versionId });
+  SHOULD_BYPASS_CALLABLES_LOCALLY
+    ? directRestoreSettingsVersion(settingType, versionId).then((data) => ({ data }))
+    : httpsCallable(functions, 'restoreSettingsVersion')({ settingType, versionId });
 
 /**
  * Returns version history for a settings type. Staff only.
@@ -616,7 +756,16 @@ export const callRestoreSettingsVersion = (settingType, versionId) =>
  * @param {number} limit
  */
 export const callGetSettingsHistory = (settingType, limit = 10) =>
-  httpsCallable(functions, 'getSettingsHistory')({ settingType, limit });
+  (SHOULD_BYPASS_CALLABLES_LOCALLY
+    ? directGetSettingsHistory(settingType, limit).then((data) => ({ data }))
+    : httpsCallable(functions, 'getSettingsHistory')({ settingType, limit })
+  ).catch(async (err) => {
+    if (!shouldFallbackToFirestore(err)) {
+      throw err;
+    }
+    console.warn('Falling back to Firestore for getSettingsHistory:', err?.message || err);
+    return { data: await directGetSettingsHistory(settingType, limit) };
+  });
 
 /**
  * Publishes staging settings by token. Admin only.
@@ -624,4 +773,6 @@ export const callGetSettingsHistory = (settingType, limit = 10) =>
  * @param {string} stagingToken
  */
 export const callPublishStagingSettings = (settingType, stagingToken) =>
-  httpsCallable(functions, 'publishStagingSettings')({ settingType, stagingToken });
+  SHOULD_BYPASS_CALLABLES_LOCALLY
+    ? directPublishStagingSettings(settingType, stagingToken).then((data) => ({ data }))
+    : httpsCallable(functions, 'publishStagingSettings')({ settingType, stagingToken });
