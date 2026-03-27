@@ -103,6 +103,19 @@ npm run web:dev
 # Admin login: http://localhost:5173/admin/login
 ```
 
+### 6. Optional: run web + local upload server together
+
+```bash
+npm run dev
+# Starts Vite frontend and local upload server concurrently
+# Upload server: http://localhost:3001
+```
+
+The local upload server is useful for self-hosted/local image uploads via:
+
+- `POST /api/upload-image`
+- `GET /images/:file`
+
 ---
 
 ## Production Setup
@@ -146,6 +159,7 @@ npm run deploy
 Or step by step:
 ```bash
 npm run deploy:rules     # Firestore + Storage rules
+npm run deploy:cors      # Apply Storage CORS config from firebase/cors.json
 npm run deploy:indexes   # Firestore indexes
 npm run deploy:functions # Cloud Functions
 npm run deploy:hosting   # Frontend
@@ -173,6 +187,8 @@ This creates/updates these Auth users with roles and profile documents:
 | editor  | editor@flarecms.dev | Editor1234! |
 | writer  | writer@flarecms.dev | Writer1234! |
 | user    | user@flarecms.dev   | User1234!   |
+
+Note: local emulator seeding (`npm run seed`) currently creates `admin`, `editor`, and `user` accounts. The `writer` account is created by `npm run inject:users`.
 
 Firestore writes include:
 
@@ -227,6 +243,8 @@ Admin-created invite tokens (7-day expiry).
 
 | Function | Role | Description |
 |----------|------|-------------|
+| `onUserCreated` | system trigger | Creates/updates profile defaults when an Auth user is created |
+| `onUserDeleted` | system trigger | Cleans up profile-linked data when an Auth user is deleted |
 | `refreshClaims` | any | Re-sync custom claims from Firestore |
 | `setUserRole` | admin | Change role; enforces last-admin guard |
 | `listUsers` | admin | Paginated user list |
@@ -238,12 +256,31 @@ Admin-created invite tokens (7-day expiry).
 | `deletePage` | staff | Deletes a page |
 | `publishPage` | staff | Sets status to published |
 | `unpublishPage` | staff | Sets status to draft |
+| `setFrontPage` | staff | Sets which page is used as the public homepage |
 | `registerMediaAsset` | staff | Saves upload metadata |
 | `listMediaAssets` | staff | Paginated asset list |
 | `deleteMediaAsset` | staff | Deletes asset + storage file |
+| `attachAssetToPage` | staff | Marks a media asset as used by a page |
+| `detachAssetFromPage` | staff | Removes a page usage reference from an asset |
 | `getDashboardStats` | staff | Cached aggregate stats (5 min TTL) |
 | `getRecentActivity` | staff | Last N activity log entries |
 | `getTrafficSummary` | staff | Traffic placeholder |
+| `saveGlobalSettings` | staff | Saves editable site-wide settings |
+| `restoreSettingsVersion` | staff | Restores a previous settings revision |
+| `getSettingsHistory` | staff | Lists previous settings revisions |
+| `publishStagingSettings` | staff | Promotes staged settings to live |
+
+---
+
+## Quality Checks
+
+Run these before opening a PR:
+
+```bash
+cd functions
+npm run lint
+npm test
+```
 
 ---
 
