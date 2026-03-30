@@ -32,6 +32,30 @@ FlareCMS/
 
 ---
 
+## Screenshots
+
+### Dashboard
+
+<img src="release/dashboard.png" alt="FlareCMS Dashboard" width="560" />
+
+### Content Editor
+
+<img src="release/content%20editor.png" alt="FlareCMS Content Editor" width="560" />
+
+### Content Library
+
+<img src="release/content%20library.png" alt="FlareCMS Content Library" width="560" />
+
+### Media Repository
+
+<img src="release/media%20repository.png" alt="FlareCMS Media Repository" width="560" />
+
+### User Ecosystem
+
+<img src="release/user%20ecosystem.png" alt="FlareCMS User Ecosystem" width="560" />
+
+---
+
 ## Quick Start (Local Development with Emulators)
 
 ### Prerequisites
