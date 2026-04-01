@@ -70,6 +70,36 @@ const sanitizeRichText = (html) => {
 };
 
 // ---------------------------------------------------------------------------
+// Video URL parser — converts watch URLs to embeddable iframes
+// ---------------------------------------------------------------------------
+
+const getVideoEmbedUrl = (url) => {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+
+    // YouTube: youtube.com/watch?v=ID or youtu.be/ID
+    if (u.hostname === 'www.youtube.com' || u.hostname === 'youtube.com') {
+      const id = u.searchParams.get('v');
+      if (id) return `https://www.youtube.com/embed/${id}`;
+    }
+    if (u.hostname === 'youtu.be') {
+      const id = u.pathname.replace('/', '');
+      if (id) return `https://www.youtube.com/embed/${id}`;
+    }
+
+    // Vimeo: vimeo.com/ID
+    if (u.hostname === 'vimeo.com' || u.hostname === 'www.vimeo.com') {
+      const id = u.pathname.replace('/', '');
+      if (id) return `https://player.vimeo.com/video/${id}`;
+    }
+  } catch {
+    // Invalid URL — ignore
+  }
+  return null;
+};
+
+// ---------------------------------------------------------------------------
 // BlockRenderer
 // ---------------------------------------------------------------------------
 
@@ -86,16 +116,15 @@ export const BlockRenderer = ({ blocks }) => {
 };
 
 const Block = ({ block }) => {
+  // ── Heading ──────────────────────────────────────────────────────────────
   if (block.type === 'heading') {
     const Tag = `h${block.level || 1}`;
     return <Tag style={{ margin: '0' }}>{block.text}</Tag>;
   }
 
+  // ── Paragraph ────────────────────────────────────────────────────────────
   if (block.type === 'paragraph') {
     const text = block.text || '';
-    // Detect rich-text HTML by looking specifically for the formatting tags
-    // produced by the RichTextEditor (execCommand output).  A plain-text
-    // comparison string such as "a < b > c" does NOT match this pattern.
     const isHtml = /<(b|i|em|strong|u|a|br|ul|ol|li|span|p)[\s/>]/i.test(text);
     if (isHtml) {
       return (
@@ -113,6 +142,7 @@ const Block = ({ block }) => {
     );
   }
 
+  // ── Quote ────────────────────────────────────────────────────────────────
   if (block.type === 'quote') {
     return (
       <blockquote style={{ margin: 0, padding: '12px 20px', borderLeft: '4px solid #7a542c', background: '#faf9f3', borderRadius: '0 6px 6px 0' }}>
@@ -128,18 +158,184 @@ const Block = ({ block }) => {
     );
   }
 
+  // ── Divider ──────────────────────────────────────────────────────────────
   if (block.type === 'divider') {
     return (
       <hr style={{ border: 'none', borderTop: '1px solid #e2e0d4', margin: '8px 0' }} />
     );
   }
 
+  // ── Image ────────────────────────────────────────────────────────────────
   if (block.type === 'image') {
-    // Prefer new imagePath field; fall back to legacy storagePath for existing data
     const imageSrc = block.imagePath || block.storagePath || null;
     if (!imageSrc) return null;
     const imageAlt = block.alt || block.imageAlt || block.image?.alt || '';
     return <RenderedImage src={imageSrc} alt={imageAlt} caption={block.caption} />;
+  }
+
+  // ── Video Embed ──────────────────────────────────────────────────────────
+  if (block.type === 'video') {
+    const embedUrl = getVideoEmbedUrl(block.url);
+    if (!embedUrl) {
+      return (
+        <div className="rendered-video-placeholder">
+          <p>No valid YouTube or Vimeo URL provided.</p>
+        </div>
+      );
+    }
+    return (
+      <figure style={{ margin: 0 }}>
+        <div className="rendered-video-wrapper">
+          <iframe
+            src={embedUrl}
+            title={block.caption || 'Embedded video'}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+          />
+        </div>
+        {block.caption && (
+          <figcaption style={{ textAlign: 'center', fontSize: '14px', color: '#64748b', marginTop: '10px' }}>
+            {block.caption}
+          </figcaption>
+        )}
+      </figure>
+    );
+  }
+
+  // ── Code Block ───────────────────────────────────────────────────────────
+  if (block.type === 'code') {
+    return (
+      <figure style={{ margin: 0 }}>
+        {block.language && block.language !== 'plain' && (
+          <div className="rendered-code-lang">{block.language}</div>
+        )}
+        <pre className="rendered-code-block">
+          <code>{block.code || ''}</code>
+        </pre>
+      </figure>
+    );
+  }
+
+  // ── Callout ──────────────────────────────────────────────────────────────
+  if (block.type === 'callout') {
+    const variant = block.variant || 'info';
+    return (
+      <div className={`rendered-callout rendered-callout--${variant}`}>
+        {block.title && <p className="rendered-callout-title">{block.title}</p>}
+        <p className="rendered-callout-text" style={{ whiteSpace: 'pre-wrap' }}>{block.text || ''}</p>
+      </div>
+    );
+  }
+
+  // ── Button / CTA ─────────────────────────────────────────────────────────
+  if (block.type === 'button') {
+    if (!block.url || !block.label) return null;
+    const isExternal = block.target === '_blank';
+    return (
+      <div style={{ display: 'flex' }}>
+        <a
+          href={block.url}
+          target={block.target || '_self'}
+          rel={isExternal ? 'noopener noreferrer' : undefined}
+          className={`rendered-btn rendered-btn--${block.variant || 'primary'}`}
+        >
+          {block.label}
+        </a>
+      </div>
+    );
+  }
+
+  // ── Spacer ───────────────────────────────────────────────────────────────
+  if (block.type === 'spacer') {
+    const heights = { small: 24, medium: 48, large: 96 };
+    const h = heights[block.size] ?? 48;
+    return <div aria-hidden="true" style={{ height: `${h}px` }} />;
+  }
+
+  // ── Two-Column Layout ────────────────────────────────────────────────────
+  if (block.type === 'columns') {
+    const renderCol = (html) => {
+      if (!html) return null;
+      const isHtml = /<(b|i|em|strong|u|a|br|ul|ol|li|span|p)[\s/>]/i.test(html);
+      if (isHtml) {
+        return (
+          <div
+            style={{ lineHeight: '1.6', color: '#334155' }}
+            // eslint-disable-next-line react/no-danger
+            dangerouslySetInnerHTML={{ __html: sanitizeRichText(html) }}
+          />
+        );
+      }
+      return <p style={{ margin: 0, lineHeight: '1.6', color: '#334155', whiteSpace: 'pre-wrap' }}>{html}</p>;
+    };
+    return (
+      <div className="rendered-columns">
+        <div className="rendered-columns-col">{renderCol(block.leftText)}</div>
+        <div className="rendered-columns-col">{renderCol(block.rightText)}</div>
+      </div>
+    );
+  }
+
+  // ── HTML Embed ───────────────────────────────────────────────────────────
+  if (block.type === 'html') {
+    if (!block.content) return null;
+    return (
+      // eslint-disable-next-line react/no-danger
+      <div dangerouslySetInnerHTML={{ __html: block.content }} />
+    );
+  }
+
+  // ── File Download ────────────────────────────────────────────────────────
+  if (block.type === 'file') {
+    if (!block.url) return null;
+    return (
+      <div className="rendered-file">
+        <div className="rendered-file-icon" aria-hidden="true">↓</div>
+        <div className="rendered-file-info">
+          <a
+            href={block.url}
+            download
+            className="rendered-file-link"
+            rel="noopener noreferrer"
+          >
+            {block.label || 'Download file'}
+          </a>
+          {block.description && (
+            <p className="rendered-file-desc">{block.description}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Accordion / FAQ ──────────────────────────────────────────────────────
+  if (block.type === 'accordion') {
+    return (
+      <details className="rendered-accordion">
+        <summary className="rendered-accordion-question">
+          {block.question || 'Question'}
+        </summary>
+        <div className="rendered-accordion-answer" style={{ whiteSpace: 'pre-wrap' }}>
+          {block.answer || ''}
+        </div>
+      </details>
+    );
+  }
+
+  // ── Card ─────────────────────────────────────────────────────────────────
+  if (block.type === 'card') {
+    return (
+      <div className="rendered-card">
+        {block.heading && <h3 className="rendered-card-heading">{block.heading}</h3>}
+        {block.body && <p className="rendered-card-body">{block.body}</p>}
+        {block.linkUrl && block.linkLabel && (
+          <a href={block.linkUrl} className="rendered-card-link">
+            {block.linkLabel} →
+          </a>
+        )}
+      </div>
+    );
   }
 
   return null;

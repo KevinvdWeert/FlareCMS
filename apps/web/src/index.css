@@ -2813,6 +2813,407 @@ body {
   border-top-color: rgba(212, 196, 183, 0.7);
 }
 
+/* =========================================
+   BLOCK TOOLBAR — separator
+========================================= */
+
+.block-toolbar-sep {
+  display: inline-block;
+  width: 1px;
+  height: 28px;
+  background: rgba(212, 196, 183, 0.55);
+  align-self: center;
+  margin: 0 2px;
+}
+
+/* =========================================
+   VIDEO BLOCK
+========================================= */
+
+.rendered-video-wrapper {
+  position: relative;
+  padding-bottom: 56.25%; /* 16:9 */
+  height: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #0f172a;
+}
+
+.rendered-video-placeholder {
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.block-video-hint {
+  font-size: 0.8rem;
+  color: #82756a;
+  margin: 0;
+}
+
+/* =========================================
+   CODE BLOCK
+========================================= */
+
+.block-code-textarea {
+  min-height: 120px;
+  resize: vertical;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.rendered-code-block {
+  background: #1e293b;
+  color: #e2e8f0;
+  border-radius: 8px;
+  padding: 16px 20px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  overflow-x: auto;
+  margin: 0;
+  white-space: pre;
+}
+
+.rendered-code-block code {
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.rendered-code-lang {
+  background: #334155;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 4px 12px;
+  border-radius: 8px 8px 0 0;
+  display: inline-block;
+  margin-bottom: -1px;
+}
+
+/* =========================================
+   CALLOUT BLOCK — editor preview & renderer
+========================================= */
+
+.block-callout-preview {
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.block-callout-preview-title {
+  font-weight: 700;
+  margin: 0 0 2px 0;
+}
+
+.block-callout-preview--info,
+.rendered-callout--info {
+  background: #eff6ff;
+  border-left: 4px solid #3b82f6;
+  color: #1e40af;
+}
+
+.block-callout-preview--warning,
+.rendered-callout--warning {
+  background: #fffbeb;
+  border-left: 4px solid #f59e0b;
+  color: #92400e;
+}
+
+.block-callout-preview--success,
+.rendered-callout--success {
+  background: #f0fdf4;
+  border-left: 4px solid #22c55e;
+  color: #166534;
+}
+
+.block-callout-preview--error,
+.rendered-callout--error {
+  background: #fef2f2;
+  border-left: 4px solid #ef4444;
+  color: #991b1b;
+}
+
+.rendered-callout {
+  border-radius: 8px;
+  padding: 14px 18px;
+  line-height: 1.6;
+}
+
+.rendered-callout-title {
+  font-weight: 700;
+  margin: 0 0 4px 0;
+  font-size: 0.95rem;
+}
+
+.rendered-callout-text {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+/* =========================================
+   BUTTON / CTA BLOCK
+========================================= */
+
+.rendered-btn {
+  display: inline-block;
+  padding: 10px 22px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.rendered-btn:hover {
+  opacity: 0.88;
+}
+
+.rendered-btn--primary {
+  background: #7a542c;
+  color: #fff;
+  border: 2px solid #7a542c;
+}
+
+.rendered-btn--secondary {
+  background: #efeee3;
+  color: #50453b;
+  border: 2px solid #d4c4b7;
+}
+
+.rendered-btn--outline {
+  background: transparent;
+  color: #7a542c;
+  border: 2px solid #7a542c;
+}
+
+/* =========================================
+   SPACER BLOCK — editor indicator
+========================================= */
+
+.block-spacer-preview {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.block-spacer-indicator {
+  display: block;
+  width: 100%;
+  border-top: 2px dashed #d4c4b7;
+  position: relative;
+}
+
+.block-spacer-indicator--small  { margin: 6px 0; }
+.block-spacer-indicator--medium { margin: 14px 0; }
+.block-spacer-indicator--large  { margin: 28px 0; }
+
+/* =========================================
+   COLUMNS BLOCK
+========================================= */
+
+.block-columns-editor {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.block-columns-editor-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.block-columns-editor-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #82756a;
+  margin: 0;
+}
+
+.rendered-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+
+.rendered-columns-col {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .block-columns-editor,
+  .rendered-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================
+   HTML EMBED BLOCK
+========================================= */
+
+.block-html-warning {
+  font-size: 0.8rem;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 0;
+}
+
+/* =========================================
+   FILE DOWNLOAD BLOCK
+========================================= */
+
+.rendered-file {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #f8f7f0;
+  border: 1px solid rgba(212, 196, 183, 0.55);
+  border-radius: 10px;
+  padding: 14px 18px;
+}
+
+.rendered-file-icon {
+  width: 38px;
+  height: 38px;
+  background: #7a542c;
+  color: #fff;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.rendered-file-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.rendered-file-link {
+  font-weight: 700;
+  color: #7a542c;
+  text-decoration: none;
+  word-break: break-word;
+}
+
+.rendered-file-link:hover {
+  text-decoration: underline;
+}
+
+.rendered-file-desc {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 0;
+}
+
+/* =========================================
+   ACCORDION / FAQ BLOCK
+========================================= */
+
+.rendered-accordion {
+  border: 1px solid rgba(212, 196, 183, 0.55);
+  border-radius: 8px;
+  background: #faf9f3;
+  overflow: hidden;
+}
+
+.rendered-accordion-question {
+  padding: 14px 18px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #1b1c15;
+  user-select: none;
+}
+
+.rendered-accordion-question::-webkit-details-marker {
+  display: none;
+}
+
+.rendered-accordion-question::after {
+  content: '▸';
+  font-size: 0.8rem;
+  color: #7a542c;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.rendered-accordion[open] .rendered-accordion-question::after {
+  transform: rotate(90deg);
+}
+
+.rendered-accordion-answer {
+  padding: 0 18px 14px 18px;
+  color: #50453b;
+  line-height: 1.7;
+  border-top: 1px solid rgba(212, 196, 183, 0.4);
+  padding-top: 12px;
+}
+
+/* =========================================
+   CARD BLOCK
+========================================= */
+
+.rendered-card {
+  background: #ffffff;
+  border: 1px solid rgba(212, 196, 183, 0.55);
+  border-radius: 12px;
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rendered-card-heading {
+  margin: 0;
+  font-size: 1.15rem;
+  color: #1b1c15;
+}
+
+.rendered-card-body {
+  margin: 0;
+  color: #50453b;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.rendered-card-link {
+  font-weight: 700;
+  color: #7a542c;
+  text-decoration: none;
+  font-size: 0.9rem;
+  align-self: flex-start;
+}
+
+.rendered-card-link:hover {
+  text-decoration: underline;
+}
 
 
 .auth-shell {
