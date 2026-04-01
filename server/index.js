@@ -120,6 +120,36 @@ app.post('/api/upload-image', (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// DELETE /api/delete-image
+// ---------------------------------------------------------------------------
+app.delete('/api/delete-image', express.json(), (req, res) => {
+  const { filePath } = req.body || {};
+  if (!filePath || typeof filePath !== 'string') {
+    return res.status(400).json({ error: 'filePath is required.' });
+  }
+
+  // Extract just the filename from paths like "/images/uuid.ext"
+  const fileName = path.basename(filePath);
+  const resolvedPath = path.resolve(IMAGES_DIR, fileName);
+
+  // Block path traversal
+  if (!resolvedPath.startsWith(IMAGES_DIR + path.sep) && resolvedPath !== IMAGES_DIR) {
+    return res.status(400).json({ error: 'Invalid file path.' });
+  }
+
+  if (!fs.existsSync(resolvedPath)) {
+    return res.status(404).json({ error: 'File not found.' });
+  }
+
+  try {
+    fs.unlinkSync(resolvedPath);
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to delete file.' });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------------
 app.listen(PORT, () => {

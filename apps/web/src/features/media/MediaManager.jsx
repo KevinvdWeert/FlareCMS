@@ -10,7 +10,7 @@ import {
   Tag,
   Trash,
 } from 'lucide-react';
-import { resolveMediaUrl, uploadImageToServer } from '../../lib/storage';
+import { resolveMediaUrl, uploadImageToServer, deleteImageFromServer } from '../../lib/storage';
 import { callRegisterMediaAsset, callListMediaAssets, callDeleteMediaAsset } from '../../lib/functions';
 import { parseFirestoreTimestamp } from '../../lib/firestore';
 
@@ -123,6 +123,8 @@ export const MediaManager = () => {
     setDeletingId(asset.id);
     setError('');
     try {
+      // Delete physical file from disk (best-effort), then remove Firestore record.
+      await deleteImageFromServer(asset.path || asset.storagePath);
       await callDeleteMediaAsset(asset.id);
       setAssets((prev) => prev.filter((a) => a.id !== asset.id));
       setSelectedIds((prev) => prev.filter((id) => id !== asset.id));
@@ -210,6 +212,11 @@ export const MediaManager = () => {
     if (!window.confirm(`Delete ${selectedIds.length} selected asset(s)? This cannot be undone.`)) return;
     setError('');
     try {
+      // Delete physical files then Firestore records.
+      for (const id of selectedIds) {
+        const asset = assets.find((a) => a.id === id);
+        if (asset) await deleteImageFromServer(asset.path || asset.storagePath);
+      }
       await Promise.all(selectedIds.map((id) => callDeleteMediaAsset(id)));
       setAssets((prev) => prev.filter((a) => !selectedIds.includes(a.id)));
       if (selected && selectedIds.includes(selected.id)) {

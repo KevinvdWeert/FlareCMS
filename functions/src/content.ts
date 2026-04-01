@@ -4,6 +4,7 @@ import { createLogger } from "./lib/logger";
 import { ErrorMessages } from "./lib/errors";
 import { validateSlug, validateTitle } from "./lib/validation";
 import { writeActivityLog, requireStaff } from "./lib/db";
+import { enforceRateLimit } from "./lib/rate-limit";
 
 const db = admin.firestore();
 
@@ -35,6 +36,7 @@ export const createPage = functions.https.onCall(async (data, context) => {
   const log = createLogger();
   await requireStaff(context);
   const uid = context.auth!.uid;
+  enforceRateLimit(uid, "createPage", 30, 60_000);
 
   const { title, slug, blocks = [], status = "draft", featuredImagePath = null } = (data as {
     title?: string;
@@ -55,30 +57,31 @@ export const createPage = functions.https.onCall(async (data, context) => {
     );
   }
 
-  // Slug uniqueness check
-  const slugSnap = await db.collection("pages").where("slug", "==", normalizedSlug).get();
-  if (!slugSnap.empty) {
-    throw new functions.https.HttpsError("already-exists", ErrorMessages.SLUG_TAKEN);
-  }
-
   const finalStatus = status === "published" ? "published" : "draft";
 
+  // Use a transaction to atomically check slug uniqueness and create the page,
+  // preventing a TOCTOU race where two concurrent requests both pass the check.
   const pageRef = db.collection("pages").doc();
-  const pageData = {
-    title: title.trim(),
-    slug: normalizedSlug,
-    blocks: Array.isArray(blocks) ? blocks : [],
-    status: finalStatus,
-    featuredImagePath: typeof featuredImagePath === "string" ? featuredImagePath : null,
-    createdBy: uid,
-    updatedBy: uid,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    publishedAt: finalStatus === "published" ? admin.firestore.FieldValue.serverTimestamp() : null,
-    version: 1,
-  };
+  await db.runTransaction(async (txn) => {
+    const slugSnap = await db.collection("pages").where("slug", "==", normalizedSlug).get();
+    if (!slugSnap.empty) {
+      throw new functions.https.HttpsError("already-exists", ErrorMessages.SLUG_TAKEN);
+    }
 
-  await pageRef.set(pageData);
+    txn.set(pageRef, {
+      title: title.trim(),
+      slug: normalizedSlug,
+      blocks: Array.isArray(blocks) ? blocks : [],
+      status: finalStatus,
+      featuredImagePath: typeof featuredImagePath === "string" ? featuredImagePath : null,
+      createdBy: uid,
+      updatedBy: uid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      publishedAt: finalStatus === "published" ? admin.firestore.FieldValue.serverTimestamp() : null,
+      version: 1,
+    });
+  });
 
   await writeActivityLog({
     actorId: uid,

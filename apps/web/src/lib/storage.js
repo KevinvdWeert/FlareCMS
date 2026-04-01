@@ -100,3 +100,24 @@ export const uploadImageToServer = async (file) => {
 export const getImageUrl = async (storagePath) => {
   return resolveMediaUrl(storagePath);
 };
+
+/**
+ * Deletes a physical image file from the local upload server.
+ * Best-effort — does not throw on failure (the Firestore record is the
+ * authoritative source of truth; orphaned files are a minor concern).
+ *
+ * @param {string} filePath - The relative path (e.g. "/images/uuid.ext" or "images/uuid.ext").
+ */
+export const deleteImageFromServer = async (filePath) => {
+  if (!filePath) return;
+  const normalizedPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
+  try {
+    await fetch('/api/delete-image', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filePath: normalizedPath }),
+    });
+  } catch {
+    // Best-effort: server may not be running in production Firebase mode.
+  }
+};

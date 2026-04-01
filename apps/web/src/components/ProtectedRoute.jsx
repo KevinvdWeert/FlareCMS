@@ -32,7 +32,7 @@ export const ProtectedRoute = ({ requireAdmin = false }) => {
           UID: <strong>{user?.uid}</strong>
         </p>
         <p>
-          Confirm Firestore API is enabled for project <code>custom-cms-1c4c7</code> and refresh this page.
+          Confirm Firestore API is enabled for your Firebase project and refresh this page.
         </p>
       </div>
     );

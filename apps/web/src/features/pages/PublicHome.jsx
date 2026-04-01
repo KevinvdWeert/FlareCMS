@@ -324,7 +324,7 @@ export const PublicHome = () => {
 
       <footer className="site-footer">
         <div className="site-footer-surface">
-          <div className="site-footer-brand">{headerSettings?.logoText || identitySettings?.siteTitle || 'Cuvée Slate'}</div>
+          <div className="site-footer-brand">{headerSettings?.logoText || identitySettings?.siteTitle || 'FlareCMS'}</div>
 
           {(contactSettings?.organizationName || contactSettings?.email || contactSettings?.phone || contactSettings?.officeHours || contactSettings?.address || contactSettings?.mapUrl) && (
             <div className="footer-contact-meta">

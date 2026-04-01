@@ -4,6 +4,7 @@ import { createLogger } from "./lib/logger";
 import { ErrorMessages } from "./lib/errors";
 import { ALLOWED_MIME_TYPES, MAX_ASSET_BYTES } from "./lib/validation";
 import { writeActivityLog, requireStaff } from "./lib/db";
+import { enforceRateLimit } from "./lib/rate-limit";
 
 const db = admin.firestore();
 
@@ -16,6 +17,7 @@ export const registerMediaAsset = functions.https.onCall(async (data, context) =
   const log = createLogger();
   await requireStaff(context);
   const uid = context.auth!.uid;
+  enforceRateLimit(uid, "registerMediaAsset", 60, 60_000);
 
   const { path, fileName, mimeType, sizeBytes, tags = [] } = (data as {
     path?: string;

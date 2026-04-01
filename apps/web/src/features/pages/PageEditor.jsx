@@ -201,6 +201,7 @@ export const PageEditor = () => {
   };
 
   const [saveSuccess, setSaveSuccess] = useState('');
+  const saveInFlightRef = useRef(false);
 
   const totalBlocks = blocks.length;
   const estimatedWords = blocks
@@ -212,9 +213,14 @@ export const PageEditor = () => {
 
   const handleSave = async (e) => {
     e.preventDefault();
+
+    // Debounce: prevent double-submit from rapid clicks.
+    if (saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
+
     setError('');
     setSaveSuccess('');
-    
+
     if (!title || !slug) {
       setError('Title and slug are required.');
       return;
@@ -271,6 +277,7 @@ export const PageEditor = () => {
       setError(err.message);
     }
     setSaving(false);
+    saveInFlightRef.current = false;
   };
 
   if (loading) return <p className="admin-muted-text">Loading editor...</p>;
