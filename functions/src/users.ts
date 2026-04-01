@@ -5,6 +5,7 @@ import { createLogger } from "./lib/logger";
 import { ErrorMessages } from "./lib/errors";
 import { validateRole, type Role } from "./lib/validation";
 import { writeActivityLog } from "./lib/db";
+import { enforceRateLimit } from "./lib/rate-limit";
 
 const db = admin.firestore();
 const auth = admin.auth();
@@ -167,6 +168,7 @@ export const createInvite = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("invalid-argument", "Invalid role.");
   }
 
+  enforceRateLimit(context.auth.uid, "createInvite", 10, 60_000);
   log.info("createInvite called", { callerUid: context.auth.uid, email, role });
 
   // Check for existing pending invite
@@ -253,9 +255,15 @@ export const acceptInvite = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("failed-precondition", "This invite has expired.");
   }
 
-  // Check email matches.
+  // Check email matches. Require a verified email to prevent misuse.
   const callerEmail = context.auth.token?.email?.toLowerCase();
-  if (callerEmail && inviteData.email && callerEmail !== inviteData.email) {
+  if (!callerEmail) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "Your account does not have a verified email address. An email is required to accept an invite."
+    );
+  }
+  if (inviteData.email && callerEmail !== inviteData.email) {
     throw new functions.https.HttpsError(
       "permission-denied",
       "This invite is for a different email address."

@@ -6,6 +6,7 @@ import { PasswordReset } from '../features/auth/PasswordReset';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { OfflineBanner } from '../components/OfflineBanner';
 
 const AdminLayout = lazy(() =>
   import('../features/admin/AdminLayout').then((module) => ({ default: module.AdminLayout }))
@@ -63,6 +64,7 @@ function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
+        <OfflineBanner />
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
             {/* Public Routes */}

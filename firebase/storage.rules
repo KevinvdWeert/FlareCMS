@@ -7,26 +7,23 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    // Use custom claims from the Auth token instead of Firestore reads.
+    // This avoids a Firestore read on every Storage write, reducing latency and cost.
     function isStaff() {
       return isAuthenticated() && (
-        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'editor'
+        request.auth.token.role == 'admin' ||
+        request.auth.token.role == 'editor'
       );
     }
 
     function isAdmin() {
       return isAuthenticated() &&
-        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        request.auth.token.role == 'admin';
     }
 
     function isPageAuthor(pageId) {
       return isAuthenticated() &&
         firestore.get(/databases/(default)/documents/pages/$(pageId)).data.createdBy == request.auth.uid;
-    }
-
-    function isAssetOwner(assetId) {
-      return isAuthenticated() &&
-        firestore.get(/databases/(default)/documents/mediaAssets/$(assetId)).data.ownerId == request.auth.uid;
     }
 
     // ---------------------------------------------------------------------------

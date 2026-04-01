@@ -3,10 +3,14 @@ import * as admin from "firebase-admin";
 import * as crypto from "crypto";
 import { ErrorMessages } from "./lib/errors";
 import { writeActivityLog, requireStaff } from "./lib/db";
+import { enforceRateLimit } from "./lib/rate-limit";
 
 const db = admin.firestore();
 
 const VALID_SETTING_TYPES = ["footer", "header", "homepage", "identity", "snippets", "seo", "contact", "media-credits"] as const;
+
+/** Maximum number of history versions to keep per setting type. */
+const MAX_HISTORY_VERSIONS = 50;
 type SettingType = (typeof VALID_SETTING_TYPES)[number];
 
 function isValidSettingType(value: unknown): value is SettingType {
@@ -20,6 +24,7 @@ function isValidSettingType(value: unknown): value is SettingType {
 export const saveGlobalSettings = functions.https.onCall(async (data, context) => {
   const callerData = await requireStaff(context);
   const uid = context.auth!.uid;
+  enforceRateLimit(uid, "saveGlobalSettings", 20, 60_000);
 
   if (callerData.role !== "admin") {
     throw new functions.https.HttpsError("permission-denied", ErrorMessages.FORBIDDEN);
@@ -80,6 +85,14 @@ export const saveGlobalSettings = functions.https.onCall(async (data, context) =
     savedByEmail: context.auth!.token?.email || null,
     isPublished: !!publishNow,
   });
+
+  // Prune old history versions beyond the cap to prevent unbounded growth.
+  const allVersions = await historyRef.orderBy("savedAt", "desc").get();
+  if (allVersions.size > MAX_HISTORY_VERSIONS) {
+    const batch = db.batch();
+    allVersions.docs.slice(MAX_HISTORY_VERSIONS).forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+  }
 
   await writeActivityLog({
     actorId: uid,
